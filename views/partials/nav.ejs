@@ -1,9 +1,7 @@
 <aside class="sidebar" id="sidebar">
   <div class="sidebar-logo">
     <div class="logo-icon">
-      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
-      </svg>
+      <img src="/img/logo.jpg" alt="TxTrace Logo" class="logo-img">
     </div>
     <div class="logo-text-wrap">
       <div class="logo-name">TxTrace</div>
@@ -38,6 +36,14 @@
         <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
       </svg>
       Empréstimos
+    </a>
+
+    <a href="/invoices" class="nav-item <%= currentPath.startsWith('/invoices') ? 'active' : '' %>">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+        <line x1="1" y1="10" x2="23" y2="10"/>
+      </svg>
+      Faturas
     </a>
 
     <div class="nav-section" style="margin-top:8px">Sistema</div>

@@ -10,6 +10,7 @@ const dashboardRoutes   = require('./routes/dashboard');
 const transactionRoutes = require('./routes/transactions');
 const loanRoutes        = require('./routes/loans');
 const settingsRoutes    = require('./routes/settings');
+const invoiceRoutes     = require('./routes/invoices');
 
 const app  = express();
 const PORT = process.env.PORT || 3400;
@@ -55,6 +56,7 @@ app.use('/',             dashboardRoutes);
 app.use('/transactions', transactionRoutes);
 app.use('/loans',        loanRoutes);
 app.use('/settings',     settingsRoutes);
+app.use('/invoices',     invoiceRoutes);
 
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 app.use((req, res) => {

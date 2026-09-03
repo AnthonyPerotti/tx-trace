@@ -86,15 +86,17 @@ router.post('/categories/:id/delete', requireAuth, (req, res) => {
 router.post('/institutions', requireAuth, (req, res) => {
   const db = getDb();
   const userId = req.session.userId;
-  const { name, type, color, credit_limit } = req.body;
+  const { name, type, color, credit_limit, invoice_closing_day, invoice_due_day } = req.body;
 
   if (!name || !name.trim()) return res.redirect('/settings?error=Nome+é+obrigatório');
 
   try {
     const limit = type === 'credit_card' && credit_limit ? parseFloat(credit_limit) : null;
+    const closingDay = type === 'credit_card' ? (parseInt(invoice_closing_day) || 5) : null;
+    const dueDay    = type === 'credit_card' ? (parseInt(invoice_due_day)     || 10) : null;
     db.prepare(
-      'INSERT INTO payment_institutions (user_id, name, type, color, credit_limit) VALUES (?, ?, ?, ?, ?)'
-    ).run(userId, name.trim(), type || 'bank', color || '#6366f1', limit);
+      'INSERT INTO payment_institutions (user_id, name, type, color, credit_limit, invoice_closing_day, invoice_due_day) VALUES (?, ?, ?, ?, ?, ?, ?)'
+    ).run(userId, name.trim(), type || 'bank', color || '#6366f1', limit, closingDay, dueDay);
     res.redirect('/settings?success=Instituição+criada+com+sucesso');
   } catch (err) {
     res.redirect('/settings?error=' + encodeURIComponent(err.message));
@@ -104,15 +106,17 @@ router.post('/institutions', requireAuth, (req, res) => {
 router.post('/institutions/:id/update', requireAuth, (req, res) => {
   const db = getDb();
   const userId = req.session.userId;
-  const { name, type, color, credit_limit } = req.body;
+  const { name, type, color, credit_limit, invoice_closing_day, invoice_due_day } = req.body;
 
   if (!name || !name.trim()) return res.redirect('/settings?error=Nome+é+obrigatório');
 
   try {
-    const limit = type === 'credit_card' && credit_limit ? parseFloat(credit_limit) : null;
+    const limit      = type === 'credit_card' && credit_limit ? parseFloat(credit_limit) : null;
+    const closingDay = type === 'credit_card' ? (parseInt(invoice_closing_day) || 5)  : null;
+    const dueDay     = type === 'credit_card' ? (parseInt(invoice_due_day)     || 10) : null;
     db.prepare(
-      'UPDATE payment_institutions SET name = ?, type = ?, color = ?, credit_limit = ? WHERE id = ? AND user_id = ?'
-    ).run(name.trim(), type, color, limit, req.params.id, userId);
+      'UPDATE payment_institutions SET name = ?, type = ?, color = ?, credit_limit = ?, invoice_closing_day = ?, invoice_due_day = ? WHERE id = ? AND user_id = ?'
+    ).run(name.trim(), type, color, limit, closingDay, dueDay, req.params.id, userId);
     res.redirect('/settings?success=Instituição+atualizada+com+sucesso');
   } catch (err) {
     res.redirect('/settings?error=' + encodeURIComponent(err.message));

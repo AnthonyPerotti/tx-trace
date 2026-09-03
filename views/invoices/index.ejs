@@ -1,0 +1,158 @@
+<%- include('../partials/head') %>
+
+<div class="app-layout">
+  <%- include('../partials/nav') %>
+
+  <div class="main-wrapper">
+    <main class="main-content">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Faturas</h1>
+          <div class="page-sub">Controle de faturas dos seus cartões de crédito</div>
+        </div>
+      </div>
+
+      <% if (success) { %>
+        <div class="alert alert-success" style="margin-bottom:16px"><%= success %></div>
+      <% } %>
+      <% if (error) { %>
+        <div class="alert alert-error" style="margin-bottom:16px"><%= error %></div>
+      <% } %>
+
+      <% if (cardInvoices.length === 0) { %>
+        <div class="card" style="text-align:center; padding:48px 24px">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" width="48" height="48" style="margin:0 auto 16px">
+            <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+            <line x1="1" y1="10" x2="23" y2="10"/>
+          </svg>
+          <div style="color:var(--text-muted); font-size:0.95rem">Nenhum cartão de crédito cadastrado.</div>
+          <a href="/settings" class="btn btn-primary btn-sm" style="margin-top:16px; display:inline-flex">Adicionar cartão em Configurações</a>
+        </div>
+      <% } %>
+
+      <% cardInvoices.forEach(({ card, invoices }) => { %>
+        <div class="card" style="margin-bottom:24px">
+
+          <!-- Card header -->
+          <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border)">
+            <div style="width:14px; height:44px; border-radius:6px; background:<%= card.color %>; flex-shrink:0"></div>
+            <div style="flex:1">
+              <div style="font-weight:700; font-size:1.05rem; color:var(--text)"><%= card.name %></div>
+              <div style="font-size:0.78rem; color:var(--text-muted)">
+                Fechamento dia <%= card.invoice_closing_day || 5 %> &nbsp;·&nbsp; Vencimento dia <%= card.invoice_due_day || 10 %>
+                <% if (card.credit_limit) { %>
+                  &nbsp;·&nbsp; Limite R$ <%= card.credit_limit.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+                <% } %>
+              </div>
+            </div>
+          </div>
+
+          <% if (invoices.length === 0) { %>
+            <div style="color:var(--text-muted); font-size:0.88rem; text-align:center; padding:24px 0">
+              Nenhuma transação de crédito lançada neste cartão ainda.
+            </div>
+          <% } %>
+
+          <% invoices.forEach(inv => {
+            const statusLabel = inv.isPaid ? 'Paga' : inv.isOpen ? 'Em aberto' : 'Fechada';
+            const statusColor = inv.isPaid ? 'var(--income)' : inv.isOpen ? '#f59e0b' : 'var(--expense)';
+            const statusBg    = inv.isPaid ? 'var(--income-bg)' : inv.isOpen ? 'rgba(245,158,11,0.12)' : 'var(--expense-bg)';
+          %>
+            <details class="invoice-row" style="margin-bottom:10px; border:1px solid var(--border); border-radius:10px; overflow:hidden">
+              <summary style="list-style:none; cursor:pointer; padding:14px 16px; display:flex; align-items:center; gap:12px; user-select:none">
+                <!-- Chevron -->
+                <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" width="16" height="16" style="flex-shrink:0; transition:transform .2s">
+                  <polyline points="9 18 15 12 9 6"/>
+                </svg>
+
+                <!-- Month / Year -->
+                <div style="flex:1">
+                  <div style="font-weight:600; color:var(--text); font-size:0.95rem">
+                    <%= MONTH_NAMES[inv.month - 1] %> <%= inv.year %>
+                  </div>
+                  <div style="font-size:0.78rem; color:var(--text-muted)">
+                    Vence em <%= inv.dueDate %> &nbsp;·&nbsp; <%= inv.txCount %> transaç<%= inv.txCount === 1 ? 'ão' : 'ões' %>
+                    <% if (inv.isPaid && inv.paidAt) { %>
+                      &nbsp;·&nbsp; Paga em <%= new Date(inv.paidAt).toLocaleDateString('pt-BR') %>
+                    <% } %>
+                  </div>
+                </div>
+
+                <!-- Total -->
+                <div style="font-weight:700; font-size:1.05rem; color:var(--expense); margin-right:12px">
+                  R$ <%= inv.total.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+                </div>
+
+                <!-- Status badge -->
+                <span style="font-size:0.72rem; font-weight:600; padding:3px 10px; border-radius:20px; background:<%= statusBg %>; color:<%= statusColor %>; flex-shrink:0">
+                  <%= statusLabel %>
+                </span>
+
+                <!-- Action button -->
+                <% if (!inv.isPaid && inv.isOpen) { %>
+                  <form action="/invoices/<%= card.id %>/<%= inv.year %>/<%= inv.month %>/pay" method="POST" onclick="event.stopPropagation()">
+                    <button type="submit" class="btn btn-sm" style="font-size:0.78rem; padding:5px 12px; flex-shrink:0; background:rgba(16,185,129,0.12); color:var(--income); border:1px solid var(--income)"
+                            onclick="return confirm('Antecipar pagamento da fatura de <%= MONTH_NAMES[inv.month - 1] %> <%= inv.year %>? Isso vai liberar o limite do cartão e marcar as transações como pagas.')">
+                      Antecipar pagamento
+                    </button>
+                  </form>
+                <% } else if (!inv.isPaid && !inv.isOpen) { %>
+                  <form action="/invoices/<%= card.id %>/<%= inv.year %>/<%= inv.month %>/pay" method="POST" onclick="event.stopPropagation()">
+                    <button type="submit" class="btn btn-primary btn-sm" style="font-size:0.78rem; padding:5px 12px; flex-shrink:0"
+                            onclick="return confirm('Marcar fatura de <%= MONTH_NAMES[inv.month - 1] %> <%= inv.year %> como paga?')">
+                      Marcar paga
+                    </button>
+                  </form>
+                <% } else if (inv.isPaid) { %>
+                  <form action="/invoices/<%= card.id %>/<%= inv.year %>/<%= inv.month %>/unpay" method="POST" onclick="event.stopPropagation()">
+                    <button type="submit" class="btn btn-sm" style="font-size:0.78rem; padding:5px 12px; flex-shrink:0; background:var(--bg-2); border:1px solid var(--border); color:var(--text-muted)"
+                            onclick="return confirm('Desmarcar esta fatura como paga?')">
+                      Reabrir
+                    </button>
+                  </form>
+                <% } %>
+              </summary>
+
+              <!-- Transaction list -->
+              <div style="border-top:1px solid var(--border); background:var(--bg-2)">
+                <% inv.transactions.forEach(tx => { %>
+                  <div style="display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border)">
+                    <div style="flex:1">
+                      <div style="font-size:0.88rem; color:var(--text); font-weight:500"><%= tx.description %></div>
+                      <div style="font-size:0.75rem; color:var(--text-muted)">
+                        <%= new Date(tx.transaction_date + 'T12:00:00').toLocaleDateString('pt-BR') %>
+                        <% if (tx.total_installments > 1) { %>
+                          &nbsp;·&nbsp; Parcela <%= tx.installment_number %>/<%= tx.total_installments %>
+                        <% } %>
+                      </div>
+                    </div>
+                    <div style="font-weight:600; font-size:0.9rem; color:var(--expense)">
+                      R$ <%= tx.amount.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+                    </div>
+                  </div>
+                <% }) %>
+                <!-- Invoice total row -->
+                <div style="display:flex; justify-content:flex-end; padding:10px 16px; gap:8px; align-items:center">
+                  <span style="font-size:0.8rem; color:var(--text-muted)">Total da fatura:</span>
+                  <span style="font-weight:700; font-size:1rem; color:var(--expense)">
+                    R$ <%= inv.total.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+                  </span>
+                </div>
+              </div>
+            </details>
+          <% }) %>
+
+        </div>
+      <% }) %>
+
+    </main>
+  </div>
+</div>
+
+<style>
+  details.invoice-row[open] .chevron-icon {
+    transform: rotate(90deg);
+  }
+  details.invoice-row > summary::-webkit-details-marker { display: none; }
+  details.invoice-row > summary::marker { display: none; }
+</style>

@@ -1,11 +1,16 @@
 # TxTrace
 
+<p align="center">
+  <img src="public/img/logo.jpg" alt="TxTrace Logo" width="120" style="border-radius: 24px;" />
+</p>
+
 Sistema pessoal de gerenciamento financeiro com interface web, autenticação de usuários e suporte a deploy via Docker.
 
 ## Funcionalidades
 
 - Lancamento de transacoes com tipo de pagamento (debito, credito, pix, dinheiro)
 - Selecao de instituicao de pagamento por transacao
+- Gestao e acompanhamento de faturas de cartao de credito (fechamento, vencimento, antecipacao e quitacao)
 - Categorias customizaveis (alimentacao, transporte, saude, lazer, etc.)
 - Parcelamento no cartao de credito com controle de limite
 - Transacoes recorrentes com cancelamento granular

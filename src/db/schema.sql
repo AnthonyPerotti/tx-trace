@@ -29,8 +29,25 @@ CREATE TABLE IF NOT EXISTS payment_institutions (
   type TEXT NOT NULL DEFAULT 'bank',
   color TEXT NOT NULL DEFAULT '#6366f1',
   credit_limit REAL DEFAULT NULL,
+  invoice_closing_day INTEGER DEFAULT 5,
+  invoice_due_day INTEGER DEFAULT 10,
   created_at TEXT DEFAULT (datetime('now', 'localtime')),
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+-- Paid credit card invoices registry
+CREATE TABLE IF NOT EXISTS card_invoices (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  institution_id INTEGER NOT NULL,
+  year INTEGER NOT NULL,
+  month INTEGER NOT NULL,
+  total_amount REAL NOT NULL DEFAULT 0,
+  paid_at TEXT DEFAULT NULL,
+  created_at TEXT DEFAULT (datetime('now', 'localtime')),
+  UNIQUE(institution_id, year, month),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (institution_id) REFERENCES payment_institutions(id) ON DELETE CASCADE
 );
 
 -- Groups installment sets

@@ -155,7 +155,7 @@
               <div class="form-row" style="margin-bottom:10px">
                 <div>
                   <label class="form-label">Tipo</label>
-                  <select name="type" class="form-control" onchange="toggleLimitField(this.value, 'creditLimitGroup')">
+                  <select name="type" class="form-control" onchange="toggleLimitField(this.value, 'creditLimitGroup', 'invoiceDaysGroup')">
                     <option value="bank">Banco / Conta Corrente</option>
                     <option value="credit_card">Cartão de Crédito</option>
                     <option value="digital_wallet">Carteira Digital / Dinheiro</option>
@@ -167,11 +167,24 @@
                 </div>
               </div>
 
-              <!-- Campo de Limite de Crédito -->
+              <!-- Campos de fatura do cartão -->
               <div class="form-group hidden" id="creditLimitGroup">
                 <label class="form-label" for="credit_limit">Limite do Cartão (R$)</label>
                 <input type="number" id="credit_limit" name="credit_limit" class="form-control" placeholder="Ex: 5000.00" step="0.01" min="0">
                 <div class="form-hint">Usado no Dashboard para alertar caso suas faturas cheguem perto ou estourem o limite.</div>
+              </div>
+
+              <div class="form-row hidden" id="invoiceDaysGroup" style="margin-bottom:10px">
+                <div>
+                  <label class="form-label">Dia de Fechamento</label>
+                  <input type="number" name="invoice_closing_day" class="form-control" placeholder="5" min="1" max="31" value="5">
+                  <div class="form-hint">Padrão: dia 5</div>
+                </div>
+                <div>
+                  <label class="form-label">Dia de Vencimento</label>
+                  <input type="number" name="invoice_due_day" class="form-control" placeholder="10" min="1" max="31" value="10">
+                  <div class="form-hint">Padrão: dia 10</div>
+                </div>
               </div>
 
               <button type="submit" class="btn btn-primary btn-sm w-full" style="justify-content:center; margin-top:10px">
@@ -198,7 +211,7 @@
                     <div style="display:flex; gap:4px; align-items:center">
                       <!-- Botão Editar Instituição -->
                       <button type="button" class="btn-icon btn-ghost" title="Editar Instituição"
-                              onclick="openInstEditModal('<%= inst.id %>', '<%= inst.name %>', '<%= inst.type %>', '<%= inst.color %>', '<%= inst.credit_limit || '' %>')">
+                              onclick="openInstEditModal('<%= inst.id %>', '<%= inst.name %>', '<%= inst.type %>', '<%= inst.color %>', '<%= inst.credit_limit || '' %>', '<%= inst.invoice_closing_day || 5 %>', '<%= inst.invoice_due_day || 10 %>')">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" stroke-linecap="round" stroke-linejoin="round">
                           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                           <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -290,6 +303,18 @@
         <label class="form-label" for="editInstLimit">Limite do Cartão (R$)</label>
         <input type="number" id="editInstLimit" name="credit_limit" class="form-control" step="0.01" min="0">
       </div>
+      <div class="form-row hidden" id="editInstInvoiceDaysGroup" style="margin-bottom:10px">
+        <div>
+          <label class="form-label">Dia de Fechamento</label>
+          <input type="number" id="editInstClosingDay" name="invoice_closing_day" class="form-control" placeholder="5" min="1" max="31">
+          <div class="form-hint">Padrão: dia 5</div>
+        </div>
+        <div>
+          <label class="form-label">Dia de Vencimento</label>
+          <input type="number" id="editInstDueDay" name="invoice_due_day" class="form-control" placeholder="10" min="1" max="31">
+          <div class="form-hint">Padrão: dia 10</div>
+        </div>
+      </div>
       <div style="display:flex; gap:8px; margin-top:16px">
         <button type="button" class="btn btn-ghost" style="flex:1; justify-content:center" onclick="closeModal('instEditModal')">Cancelar</button>
         <button type="submit" class="btn btn-primary" style="flex:2; justify-content:center">Salvar Alterações</button>
@@ -299,14 +324,15 @@
 </div>
 
 <script>
-  function toggleLimitField(val, groupId) {
-    const limitGroup = document.getElementById(groupId);
-    if (limitGroup) {
-      if (val === 'credit_card') {
-        limitGroup.classList.remove('hidden');
-      } else {
-        limitGroup.classList.add('hidden');
-      }
+  function toggleLimitField(val, limitGroupId, invoiceDaysGroupId) {
+    const limitGroup       = document.getElementById(limitGroupId);
+    const invoiceDaysGroup = invoiceDaysGroupId ? document.getElementById(invoiceDaysGroupId) : null;
+    if (val === 'credit_card') {
+      if (limitGroup) limitGroup.classList.remove('hidden');
+      if (invoiceDaysGroup) invoiceDaysGroup.classList.remove('hidden');
+    } else {
+      if (limitGroup) limitGroup.classList.add('hidden');
+      if (invoiceDaysGroup) invoiceDaysGroup.classList.add('hidden');
     }
   }
 
@@ -318,13 +344,15 @@
     document.getElementById('categoryEditModal').classList.add('open');
   }
 
-  function openInstEditModal(id, name, type, color, limit) {
+  function openInstEditModal(id, name, type, color, limit, closingDay, dueDay) {
     document.getElementById('instEditForm').action = `/settings/institutions/${id}/update`;
-    document.getElementById('editInstName').value = name;
-    document.getElementById('editInstType').value = type;
-    document.getElementById('editInstColor').value = color;
-    document.getElementById('editInstLimit').value = limit;
-    toggleLimitField(type, 'editInstLimitGroup');
+    document.getElementById('editInstName').value        = name;
+    document.getElementById('editInstType').value        = type;
+    document.getElementById('editInstColor').value       = color;
+    document.getElementById('editInstLimit').value       = limit || '';
+    document.getElementById('editInstClosingDay').value  = closingDay || 5;
+    document.getElementById('editInstDueDay').value      = dueDay     || 10;
+    toggleLimitField(type, 'editInstLimitGroup', 'editInstInvoiceDaysGroup');
     document.getElementById('instEditModal').classList.add('open');
   }
 

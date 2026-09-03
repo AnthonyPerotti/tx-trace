@@ -61,6 +61,15 @@ function getDb() {
 
     const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
     db.exec(schema);
+
+    // ── Migrations: safely add columns that may not exist in older databases ──
+    const migrations = [
+      "ALTER TABLE payment_institutions ADD COLUMN invoice_closing_day INTEGER DEFAULT 5",
+      "ALTER TABLE payment_institutions ADD COLUMN invoice_due_day INTEGER DEFAULT 10"
+    ];
+    migrations.forEach(sql => {
+      try { db.exec(sql); } catch (_) { /* column already exists, ignore */ }
+    });
   }
   return db;
 }
