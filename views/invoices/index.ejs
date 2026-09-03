@@ -1,146 +1,227 @@
-<%- include('../partials/head') %>
-
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><%- include('../partials/head') %></head>
+<body>
 <div class="app-layout">
   <%- include('../partials/nav') %>
 
-  <div class="main-wrapper">
-    <main class="main-content">
-      <div class="page-header">
-        <div>
-          <h1 class="page-title">Faturas</h1>
-          <div class="page-sub">Controle de faturas dos seus cartões de crédito</div>
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title">Faturas</div>
+
+      <div style="display:flex; align-items:center; gap:10px">
+        <a href="/settings" class="btn btn-ghost btn-sm" title="Gerenciar cartões nas configurações">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          Configurar Cartões
+        </a>
+        <a href="/transactions/new" class="btn btn-primary btn-sm">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="15" height="15" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Nova Transação
+        </a>
+      </div>
+    </header>
+
+    <main class="page-content">
+      <% if (success) { %>
+        <div class="alert alert-success"><%= success %></div>
+      <% } %>
+      <% if (error) { %>
+        <div class="alert alert-error"><%= error %></div>
+      <% } %>
+
+      <% 
+        // Totais gerais para os summary cards
+        let totalOpen = 0;
+        let totalClosedPending = 0;
+        let totalCreditLimit = 0;
+
+        cardInvoices.forEach(({ card, invoices }) => {
+          if (card.credit_limit) totalCreditLimit += card.credit_limit;
+          invoices.forEach(inv => {
+            if (!inv.isPaid && inv.isOpen) totalOpen += inv.total;
+            if (!inv.isPaid && !inv.isOpen) totalClosedPending += inv.total;
+          });
+        });
+      %>
+
+      <!-- Summary Cards Grid (Padrão visual de todo o sistema) -->
+      <div class="summary-grid">
+        <div class="summary-card balance">
+          <div class="sc-label">Faturas Abertas (Mês Atual)</div>
+          <div class="sc-amount" style="color:var(--info)">
+            R$ <%= totalOpen.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+          </div>
+          <div class="sc-sub">Gastos acumulando até a data de fechamento</div>
+        </div>
+
+        <div class="summary-card expense">
+          <div class="sc-label">Faturas Fechadas a Pagar</div>
+          <div class="sc-amount" style="color:var(--expense)">
+            R$ <%= totalClosedPending.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+          </div>
+          <div class="sc-sub">Faturas já fechadas aguardando quitação</div>
+        </div>
+
+        <div class="summary-card income">
+          <div class="sc-label">Limite Total dos Cartões</div>
+          <div class="sc-amount" style="color:var(--income)">
+            R$ <%= totalCreditLimit.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+          </div>
+          <div class="sc-sub"><%= cardInvoices.length %> cartão(ões) cadastrado(s)</div>
         </div>
       </div>
 
-      <% if (success) { %>
-        <div class="alert alert-success" style="margin-bottom:16px"><%= success %></div>
-      <% } %>
-      <% if (error) { %>
-        <div class="alert alert-error" style="margin-bottom:16px"><%= error %></div>
-      <% } %>
-
       <% if (cardInvoices.length === 0) { %>
-        <div class="card" style="text-align:center; padding:48px 24px">
-          <svg viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="1.5" width="48" height="48" style="margin:0 auto 16px">
+        <div class="card empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
             <rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
             <line x1="1" y1="10" x2="23" y2="10"/>
           </svg>
-          <div style="color:var(--text-muted); font-size:0.95rem">Nenhum cartão de crédito cadastrado.</div>
-          <a href="/settings" class="btn btn-primary btn-sm" style="margin-top:16px; display:inline-flex">Adicionar cartão em Configurações</a>
+          <h3>Nenhum cartão de crédito cadastrado</h3>
+          <p>Cadastre seus cartões de crédito em configurações para gerenciar o fechamento de faturas e limites.</p>
+          <a href="/settings" class="btn btn-primary btn-sm" style="margin-top:8px">Adicionar Cartão de Crédito</a>
         </div>
       <% } %>
 
       <% cardInvoices.forEach(({ card, invoices }) => { %>
-        <div class="card" style="margin-bottom:24px">
-
-          <!-- Card header -->
-          <div style="display:flex; align-items:center; gap:12px; margin-bottom:20px; padding-bottom:16px; border-bottom:1px solid var(--border)">
-            <div style="width:14px; height:44px; border-radius:6px; background:<%= card.color %>; flex-shrink:0"></div>
-            <div style="flex:1">
-              <div style="font-weight:700; font-size:1.05rem; color:var(--text)"><%= card.name %></div>
-              <div style="font-size:0.78rem; color:var(--text-muted)">
-                Fechamento dia <%= card.invoice_closing_day || 5 %> &nbsp;·&nbsp; Vencimento dia <%= card.invoice_due_day || 10 %>
-                <% if (card.credit_limit) { %>
-                  &nbsp;·&nbsp; Limite R$ <%= card.credit_limit.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
-                <% } %>
+        <div class="card" style="margin-bottom:20px; border-left: 4px solid <%= card.color %>">
+          
+          <!-- Card Header com padrão de design -->
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:16px; flex-wrap:wrap; gap:12px">
+            <div style="display:flex; align-items:center; gap:12px">
+              <span style="width:14px; height:14px; border-radius:50%; background:<%= card.color %>; display:inline-block; box-shadow: 0 0 10px <%= card.color %>88"></span>
+              <div>
+                <h2 style="font-size:16px; font-weight:700; color:var(--text-primary); margin:0"><%= card.name %></h2>
+                <div class="text-xs text-muted-c" style="margin-top:2px">
+                  Fecha dia <%= card.invoice_closing_day || 5 %> • Vence dia <%= card.invoice_due_day || 10 %>
+                </div>
               </div>
+            </div>
+
+            <div style="text-align:right">
+              <% if (card.credit_limit) { %>
+                <div class="text-xs text-muted-c">Limite Total</div>
+                <div style="font-weight:700; font-size:14px; color:var(--text-secondary)">
+                  R$ <%= card.credit_limit.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                </div>
+              <% } else { %>
+                <span class="badge" style="background:var(--bg-input); color:var(--text-muted)">Sem limite configurado</span>
+              <% } %>
             </div>
           </div>
 
           <% if (invoices.length === 0) { %>
-            <div style="color:var(--text-muted); font-size:0.88rem; text-align:center; padding:24px 0">
-              Nenhuma transação de crédito lançada neste cartão ainda.
+            <div class="text-xs text-muted-c" style="padding:16px 0; text-align:center; background:var(--bg-input); border-radius:var(--r-md); border:1px dashed var(--border-subtle)">
+              Nenhuma transação com este cartão foi registrada até o momento.
             </div>
-          <% } %>
+          <% } else { %>
+            <div style="display:flex; flex-direction:column; gap:10px">
+              <% invoices.forEach(inv => { 
+                const statusClass = inv.isPaid ? 'badge-paid' : (inv.isOpen ? 'badge-pending' : 'badge-cancelled');
+                const statusLabel = inv.isPaid ? '✓ Paga' : (inv.isOpen ? '● Em Aberto' : '⚠ Fechada');
+              %>
+                <details class="invoice-accordion" style="background:var(--bg-input); border:1px solid var(--border-subtle); border-radius:var(--r-md); overflow:hidden">
+                  <summary style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; cursor:pointer; list-style:none; gap:12px; user-select:none; transition:background var(--t)">
+                    <div style="display:flex; align-items:center; gap:10px; min-width:0">
+                      <svg class="accordion-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" style="color:var(--text-muted); transition:transform var(--t); flex-shrink:0">
+                        <polyline points="9 18 15 12 9 6"/>
+                      </svg>
+                      <div>
+                        <div style="font-weight:600; font-size:13.5px; color:var(--text-primary)">
+                          <%= MONTH_NAMES[inv.month - 1] %> <%= inv.year %>
+                        </div>
+                        <div class="text-xs text-muted-c">
+                          Vencimento: <%= inv.dueDate %> • <%= inv.txCount %> transaç<%= inv.txCount === 1 ? 'ão' : 'ões' %>
+                          <% if (inv.isPaid && inv.paidAt) { %>
+                            • Paga em <%= new Date(inv.paidAt).toLocaleDateString('pt-BR') %>
+                          <% } %>
+                        </div>
+                      </div>
+                    </div>
 
-          <% invoices.forEach(inv => {
-            const statusLabel = inv.isPaid ? 'Paga' : inv.isOpen ? 'Em aberto' : 'Fechada';
-            const statusColor = inv.isPaid ? 'var(--income)' : inv.isOpen ? '#f59e0b' : 'var(--expense)';
-            const statusBg    = inv.isPaid ? 'var(--income-bg)' : inv.isOpen ? 'rgba(245,158,11,0.12)' : 'var(--expense-bg)';
-          %>
-            <details class="invoice-row" style="margin-bottom:10px; border:1px solid var(--border); border-radius:10px; overflow:hidden">
-              <summary style="list-style:none; cursor:pointer; padding:14px 16px; display:flex; align-items:center; gap:12px; user-select:none">
-                <!-- Chevron -->
-                <svg class="chevron-icon" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" stroke-width="2" width="16" height="16" style="flex-shrink:0; transition:transform .2s">
-                  <polyline points="9 18 15 12 9 6"/>
-                </svg>
+                    <div style="display:flex; align-items:center; gap:12px; flex-shrink:0">
+                      <div class="td-amount td-expense" style="font-size:14.5px">
+                        R$ <%= inv.total.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                      </div>
 
-                <!-- Month / Year -->
-                <div style="flex:1">
-                  <div style="font-weight:600; color:var(--text); font-size:0.95rem">
-                    <%= MONTH_NAMES[inv.month - 1] %> <%= inv.year %>
-                  </div>
-                  <div style="font-size:0.78rem; color:var(--text-muted)">
-                    Vence em <%= inv.dueDate %> &nbsp;·&nbsp; <%= inv.txCount %> transaç<%= inv.txCount === 1 ? 'ão' : 'ões' %>
-                    <% if (inv.isPaid && inv.paidAt) { %>
-                      &nbsp;·&nbsp; Paga em <%= new Date(inv.paidAt).toLocaleDateString('pt-BR') %>
-                    <% } %>
-                  </div>
-                </div>
+                      <span class="badge <%= statusClass %>" style="font-size:10.5px">
+                        <%= statusLabel %>
+                      </span>
 
-                <!-- Total -->
-                <div style="font-weight:700; font-size:1.05rem; color:var(--expense); margin-right:12px">
-                  R$ <%= inv.total.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
-                </div>
-
-                <!-- Status badge -->
-                <span style="font-size:0.72rem; font-weight:600; padding:3px 10px; border-radius:20px; background:<%= statusBg %>; color:<%= statusColor %>; flex-shrink:0">
-                  <%= statusLabel %>
-                </span>
-
-                <!-- Action button -->
-                <% if (!inv.isPaid && inv.isOpen) { %>
-                  <form action="/invoices/<%= card.id %>/<%= inv.year %>/<%= inv.month %>/pay" method="POST" onclick="event.stopPropagation()">
-                    <button type="submit" class="btn btn-sm" style="font-size:0.78rem; padding:5px 12px; flex-shrink:0; background:rgba(16,185,129,0.12); color:var(--income); border:1px solid var(--income)"
-                            onclick="return confirm('Antecipar pagamento da fatura de <%= MONTH_NAMES[inv.month - 1] %> <%= inv.year %>? Isso vai liberar o limite do cartão e marcar as transações como pagas.')">
-                      Antecipar pagamento
-                    </button>
-                  </form>
-                <% } else if (!inv.isPaid && !inv.isOpen) { %>
-                  <form action="/invoices/<%= card.id %>/<%= inv.year %>/<%= inv.month %>/pay" method="POST" onclick="event.stopPropagation()">
-                    <button type="submit" class="btn btn-primary btn-sm" style="font-size:0.78rem; padding:5px 12px; flex-shrink:0"
-                            onclick="return confirm('Marcar fatura de <%= MONTH_NAMES[inv.month - 1] %> <%= inv.year %> como paga?')">
-                      Marcar paga
-                    </button>
-                  </form>
-                <% } else if (inv.isPaid) { %>
-                  <form action="/invoices/<%= card.id %>/<%= inv.year %>/<%= inv.month %>/unpay" method="POST" onclick="event.stopPropagation()">
-                    <button type="submit" class="btn btn-sm" style="font-size:0.78rem; padding:5px 12px; flex-shrink:0; background:var(--bg-2); border:1px solid var(--border); color:var(--text-muted)"
-                            onclick="return confirm('Desmarcar esta fatura como paga?')">
-                      Reabrir
-                    </button>
-                  </form>
-                <% } %>
-              </summary>
-
-              <!-- Transaction list -->
-              <div style="border-top:1px solid var(--border); background:var(--bg-2)">
-                <% inv.transactions.forEach(tx => { %>
-                  <div style="display:flex; align-items:center; gap:12px; padding:10px 16px; border-bottom:1px solid var(--border)">
-                    <div style="flex:1">
-                      <div style="font-size:0.88rem; color:var(--text); font-weight:500"><%= tx.description %></div>
-                      <div style="font-size:0.75rem; color:var(--text-muted)">
-                        <%= new Date(tx.transaction_date + 'T12:00:00').toLocaleDateString('pt-BR') %>
-                        <% if (tx.total_installments > 1) { %>
-                          &nbsp;·&nbsp; Parcela <%= tx.installment_number %>/<%= tx.total_installments %>
+                      <!-- Ações de Fatura -->
+                      <div onclick="event.stopPropagation()">
+                        <% if (!inv.isPaid && inv.isOpen) { %>
+                          <form action="/invoices/<%= card.id %>/<%= inv.year %>/<%= inv.month %>/pay" method="POST" style="margin:0">
+                            <button type="submit" class="btn btn-sm" style="background:var(--income-bg); color:var(--income); border:1px solid rgba(16,185,129,0.3); font-size:11px; padding:4px 10px"
+                                    onclick="return confirm('Antecipar pagamento da fatura de <%= MONTH_NAMES[inv.month - 1] %>/<%= inv.year %>? Todas as compras desta fatura serão marcadas como pagas e o limite será liberado.')">
+                              Antecipar
+                            </button>
+                          </form>
+                        <% } else if (!inv.isPaid && !inv.isOpen) { %>
+                          <form action="/invoices/<%= card.id %>/<%= inv.year %>/<%= inv.month %>/pay" method="POST" style="margin:0">
+                            <button type="submit" class="btn btn-primary btn-sm" style="font-size:11px; padding:4px 10px"
+                                    onclick="return confirm('Marcar fatura de <%= MONTH_NAMES[inv.month - 1] %>/<%= inv.year %> como paga? As transações vinculadas serão marcadas como pagas.')">
+                              Pagar Fatura
+                            </button>
+                          </form>
+                        <% } else if (inv.isPaid) { %>
+                          <form action="/invoices/<%= card.id %>/<%= inv.year %>/<%= inv.month %>/unpay" method="POST" style="margin:0">
+                            <button type="submit" class="btn-icon btn-ghost" style="font-size:11px" title="Reabrir fatura (desmarcar como paga)"
+                                    onclick="return confirm('Reabrir esta fatura? O status de pagamento das transações correspondentes será revertido.')">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+                              </svg>
+                            </button>
+                          </form>
                         <% } %>
                       </div>
                     </div>
-                    <div style="font-weight:600; font-size:0.9rem; color:var(--expense)">
-                      R$ <%= tx.amount.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
-                    </div>
+                  </summary>
+
+                  <!-- Detalhes das compras na fatura em tabela padrão -->
+                  <div class="table-wrap" style="border-top:1px solid var(--border-subtle); border-radius:0">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Descrição</th>
+                          <th>Data da Compra</th>
+                          <th>Parcelas</th>
+                          <th style="text-align:right">Valor</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <% inv.transactions.forEach(tx => { %>
+                          <tr>
+                            <td>
+                              <div style="font-weight:500; font-size:13px; color:var(--text-primary)"><%= tx.description %></div>
+                            </td>
+                            <td class="text-muted-c text-sm">
+                              <%= new Date(tx.transaction_date + 'T12:00:00').toLocaleDateString('pt-BR') %>
+                            </td>
+                            <td>
+                              <% if (tx.total_installments && tx.total_installments > 1) { %>
+                                <span class="badge badge-install"><%= tx.installment_number %>/<%= tx.total_installments %>x</span>
+                              <% } else { %>
+                                <span class="text-xs text-muted-c">À vista</span>
+                              <% } %>
+                            </td>
+                            <td class="td-amount td-expense" style="text-align:right">
+                              R$ <%= tx.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                            </td>
+                          </tr>
+                        <% }) %>
+                      </tbody>
+                    </table>
                   </div>
-                <% }) %>
-                <!-- Invoice total row -->
-                <div style="display:flex; justify-content:flex-end; padding:10px 16px; gap:8px; align-items:center">
-                  <span style="font-size:0.8rem; color:var(--text-muted)">Total da fatura:</span>
-                  <span style="font-weight:700; font-size:1rem; color:var(--expense)">
-                    R$ <%= inv.total.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
-                  </span>
-                </div>
-              </div>
-            </details>
-          <% }) %>
+                </details>
+              <% }) %>
+            </div>
+          <% } %>
 
         </div>
       <% }) %>
@@ -150,9 +231,14 @@
 </div>
 
 <style>
-  details.invoice-row[open] .chevron-icon {
+  .invoice-accordion[open] .accordion-arrow {
     transform: rotate(90deg);
   }
-  details.invoice-row > summary::-webkit-details-marker { display: none; }
-  details.invoice-row > summary::marker { display: none; }
+  .invoice-accordion summary:hover {
+    background: var(--bg-card-hover);
+  }
+  .invoice-accordion > summary::-webkit-details-marker { display: none; }
+  .invoice-accordion > summary::marker { display: none; }
 </style>
+</body>
+</html>
