@@ -1,6 +1,7 @@
 services:
   tx-trace:
     build: .
+    image: tx-trace:latest
     container_name: tx-trace
     restart: unless-stopped
     ports:
