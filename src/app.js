@@ -58,6 +58,9 @@ app.use('/loans',        loanRoutes);
 app.use('/settings',     settingsRoutes);
 app.use('/invoices',     invoiceRoutes);
 
+// ─── Health check ────────────────────────────────────────────────────────────
+app.get('/health', (req, res) => res.status(200).send('OK'));
+
 // ─── 404 ─────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).render('404', { title: '404 — TxTrace' });
@@ -69,7 +72,18 @@ app.use((err, req, res, next) => {
   res.status(500).send('Erro interno: ' + err.message);
 });
 
-// ─── Start ───────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`TxTrace running → http://localhost:${PORT}`);
+// ─── Graceful Shutdown ──────────────────────────────────────────────────────
+const server = app.listen(PORT, '0.0.0.0', () => {
+  console.log(`TxTrace running → http://0.0.0.0:${PORT}`);
 });
+
+process.on('SIGTERM', () => {
+  console.log('SIGTERM received, shutting down gracefully...');
+  server.close(() => process.exit(0));
+});
+
+process.on('SIGINT', () => {
+  console.log('SIGINT received, shutting down gracefully...');
+  server.close(() => process.exit(0));
+});
+
