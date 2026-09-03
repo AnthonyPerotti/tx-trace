@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><%- include('partials/head') %></head>
+<body>
+<div class="app-layout">
+  <%- include('partials/nav') %>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title">Dashboard</div>
+
+      <!-- Filtros: Modo de Visão, Mês, Ano e Conta -->
+      <form id="periodForm" action="/" method="GET" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+        <!-- Seletor de Visão -->
+        <select name="view_mode" class="form-control" style="width:auto; font-weight:600; color:var(--primary)" onchange="this.form.submit()">
+          <option value="transactions" <%= (typeof viewMode === 'undefined' || viewMode === 'transactions') ? 'selected' : '' %>>Transações (Principal)</option>
+          <option value="all"          <%= (typeof viewMode !== 'undefined' && viewMode === 'all') ? 'selected' : '' %>>Geral Consolidado (Transações + Empréstimos)</option>
+          <option value="loans"        <%= (typeof viewMode !== 'undefined' && viewMode === 'loans') ? 'selected' : '' %>>Apenas Empréstimos</option>
+        </select>
+
+        <select name="month" class="form-control" style="width:auto" onchange="this.form.submit()">
+          <% MONTH_NAMES.forEach((m, i) => { %>
+            <option value="<%= i+1 %>" <%= (i+1 === month) ? 'selected' : '' %>><%= m %></option>
+          <% }) %>
+        </select>
+        <select name="year" class="form-control" style="width:auto" onchange="this.form.submit()">
+          <% for(let y = new Date().getFullYear(); y >= new Date().getFullYear() - 4; y--) { %>
+            <option value="<%= y %>" <%= y === year ? 'selected' : '' %>><%= y %></option>
+          <% } %>
+        </select>
+        <select name="institution_id" class="form-control" style="width:auto" onchange="this.form.submit()">
+          <option value="">Todas as contas</option>
+          <% institutions.forEach(inst => { %>
+            <option value="<%= inst.id %>" <%= institutionId == inst.id ? 'selected' : '' %>><%= inst.name %></option>
+          <% }) %>
+        </select>
+      </form>
+
+      <a href="/transactions/new" class="btn btn-primary btn-sm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Novo Lançamento
+      </a>
+    </header>
+
+    <main class="page-content">
+
+      <!-- Summary Cards -->
+      <div class="summary-grid">
+        <div class="summary-card income">
+          <div class="sc-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>
+            </svg>
+          </div>
+          <div class="sc-label">
+            <%= (viewMode === 'all') ? 'Receitas + Retornos' : (viewMode === 'loans') ? 'Retornos de Empréstimo' : 'Receitas' %>
+          </div>
+          <div class="sc-amount">R$ <%= summary.income.toLocaleString('pt-BR', {minimumFractionDigits:2}) %></div>
+          <div class="sc-sub">
+            <% if (viewMode === 'all') { %>
+              Tx: R$ <%= summary.txIncome.toLocaleString('pt-BR', {minimumFractionDigits:2}) %> | Emp: R$ <%= summary.loanInflow.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+            <% } else { %>
+              <%= MONTH_NAMES[month-1] %> <%= year %>
+            <% } %>
+          </div>
+        </div>
+
+        <div class="summary-card expense">
+          <div class="sc-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/><polyline points="17 18 23 18 23 12"/>
+            </svg>
+          </div>
+          <div class="sc-label">
+            <%= (viewMode === 'all') ? 'Despesas + Saídas Emp.' : (viewMode === 'loans') ? 'Saídas de Empréstimo' : 'Despesas' %>
+          </div>
+          <div class="sc-amount">R$ <%= summary.expenses.toLocaleString('pt-BR', {minimumFractionDigits:2}) %></div>
+          <div class="sc-sub">
+            <% if (viewMode === 'all') { %>
+              Tx: R$ <%= summary.txExpenses.toLocaleString('pt-BR', {minimumFractionDigits:2}) %> | Emp: R$ <%= summary.loanOutflow.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+            <% } else { %>
+              <%= MONTH_NAMES[month-1] %> <%= year %>
+            <% } %>
+          </div>
+        </div>
+
+        <div class="summary-card balance">
+          <div class="sc-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+          <div class="sc-label">Saldo Líquido</div>
+          <div class="sc-amount" style="color: <%= summary.balance >= 0 ? 'var(--income)' : 'var(--expense)' %>">
+            R$ <%= summary.balance.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+          </div>
+          <div class="sc-sub"><%= summary.balance >= 0 ? 'Positivo' : 'Negativo' %> no período</div>
+        </div>
+      </div>
+
+      <!-- Charts + Category -->
+      <div class="dashboard-grid">
+        <!-- Bar Chart -->
+        <div class="card">
+          <div class="card-title">
+            <span>
+              Fluxo Financeiro (<%= (viewMode === 'all') ? 'Consolidado' : (viewMode === 'loans') ? 'Empréstimos' : 'Transações' %>)
+            </span>
+            <div class="chart-controls">
+              <select id="periodSelect" class="form-control" style="font-size:11px; padding:4px 8px; width:auto; height:auto">
+                <option value="2months">2 meses</option>
+                <option value="3months">3 meses</option>
+                <option value="6months" selected>6 meses</option>
+                <option value="12months">12 meses</option>
+              </select>
+              <button class="chart-type-btn active" data-chart="bar"   onclick="setChartType('bar',   this)">Barra</button>
+              <button class="chart-type-btn"        data-chart="line"  onclick="setChartType('line',  this)">Linha</button>
+              <button class="chart-type-btn"        data-chart="area"  onclick="setChartType('area',  this)">Área</button>
+            </div>
+          </div>
+          <div class="chart-container">
+            <canvas id="mainChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Category Pie -->
+        <div class="card">
+          <div class="card-title">Distribuição por Categoria</div>
+          <% if (byCategory.length > 0) { %>
+            <div class="chart-container" style="height:200px">
+              <canvas id="categoryChart"></canvas>
+            </div>
+            <div style="margin-top:12px; display:flex; flex-direction:column; gap:5px">
+              <% byCategory.slice(0,5).forEach(cat => {
+                const pct = summary.expenses > 0 ? Math.round((cat.total / summary.expenses) * 100) : 0;
+              %>
+              <div style="display:flex; align-items:center; gap:8px; font-size:12px">
+                <span><%= cat.icon %></span>
+                <span style="flex:1; color:var(--text-secondary)"><%= cat.name %></span>
+                <span style="font-weight:700">R$ <%= cat.total.toLocaleString('pt-BR', {minimumFractionDigits:2}) %></span>
+                <span style="color:var(--text-muted); min-width:32px; text-align:right"><%= pct %>%</span>
+              </div>
+              <div class="progress">
+                <div class="progress-fill" style="width:<%= pct %>%; background:<%= cat.color %>"></div>
+              </div>
+              <% }) %>
+            </div>
+          <% } else { %>
+            <div class="empty-state">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+              <p>Nenhuma despesa ou saída neste período</p>
+            </div>
+          <% } %>
+        </div>
+      </div>
+
+      <!-- Credit Card Limits -->
+      <% if (cardSummaries.length > 0) { %>
+      <div class="card mb-4">
+        <div class="card-title">
+          Cartões de Crédito — Uso do Limite
+        </div>
+        <div class="cc-grid">
+          <% cardSummaries.forEach(card => {
+            const pct = card.credit_limit > 0 ? Math.min(100, Math.round((card.used_limit / card.credit_limit) * 100)) : 0;
+            const available = card.credit_limit - card.used_limit;
+            const overLimit = available < 0;
+          %>
+          <div class="cc-card <%= overLimit ? 'over-limit' : '' %>" style="--cc-color: <%= card.color %>">
+            <div style="position:absolute; top:0; left:0; right:0; height:3px; background:<%= card.color %>; border-radius:var(--r-md) var(--r-md) 0 0"></div>
+            <div class="cc-name"><%= card.name %></div>
+            <div class="cc-type">Crédito</div>
+
+            <% if (card.credit_limit) { %>
+              <div class="cc-limit-row">
+                <span>Usado</span>
+                <span>Disponível</span>
+              </div>
+              <div class="cc-limit-row">
+                <span class="cc-limit-used" style="color:<%= overLimit ? 'var(--expense)' : 'var(--text-primary)' %>">
+                  R$ <%= card.used_limit.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+                </span>
+                <span class="cc-limit-total">
+                  de R$ <%= card.credit_limit.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+                </span>
+              </div>
+              <div class="progress">
+                <div class="progress-fill <%= pct >= 90 ? 'red' : pct >= 70 ? 'yellow' : 'green' %>"
+                     style="width:<%= pct %>%"></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size:11px; margin-top:5px">
+                <span style="color:var(--text-muted)">Disponível: <strong style="color:<%= overLimit ? 'var(--expense)' : 'var(--income)' %>">
+                  R$ <%= Math.abs(available).toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+                  <%= overLimit ? '(excedido)' : '' %>
+                </strong></span>
+                <span style="color:<%= pct >= 90 ? 'var(--expense)' : 'var(--text-muted)' %>"><%= pct %>%</span>
+              </div>
+              <% if (overLimit) { %>
+              <div class="cc-over-badge">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                Limite excedido
+              </div>
+              <% } %>
+            <% } else { %>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:8px">Sem limite definido</div>
+              <div style="font-size:12px; font-weight:600; margin-top:4px; color:var(--expense)">
+                R$ <%= card.used_limit.toLocaleString('pt-BR', {minimumFractionDigits:2}) %> em aberto
+              </div>
+            <% } %>
+          </div>
+          <% }) %>
+        </div>
+      </div>
+      <% } %>
+
+      <!-- Recent Transactions -->
+      <div class="card">
+        <div class="section-header mb-4">
+          <div>
+            <div class="section-title">Transações Recentes</div>
+            <div class="section-sub">Últimas 10 movimentações</div>
+          </div>
+          <a href="/transactions" class="btn btn-ghost btn-sm">Ver todas</a>
+        </div>
+
+        <% if (recentTransactions.length > 0) { %>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Descrição</th>
+                <th>Data</th>
+                <th>Categoria</th>
+                <th>Método</th>
+                <th>Valor</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% recentTransactions.forEach(tx => { %>
+              <tr>
+                <td>
+                  <span style="font-weight:600"><%= tx.description %></span>
+                  <% if (tx.is_recurring && !tx.recurrence_cancelled_at) { %><span class="badge badge-recurring" style="margin-left:6px">Recorrente</span><% } %>
+                  <% if (tx.recurrence_cancelled_at) { %><span class="badge badge-cancelled" style="margin-left:6px">Cancelado</span><% } %>
+                  <% if (tx.installment_number) { %><span class="badge badge-install" style="margin-left:4px"><%= tx.installment_number %>/<%= tx.total_installments %></span><% } %>
+                </td>
+                <td class="text-muted-c"><%= new Date(tx.transaction_date + 'T12:00:00').toLocaleDateString('pt-BR') %></td>
+                <td>
+                  <span style="display:flex; align-items:center; gap:5px">
+                    <span style="font-size:14px"><%= tx.category_icon %></span>
+                    <span style="color:var(--text-secondary); font-size:12px"><%= tx.category_name %></span>
+                  </span>
+                </td>
+                <td>
+                  <% const methodMap = {debit:'Débito', credit:'Crédito', pix:'Pix', cash:'Dinheiro'}; %>
+                  <span class="text-muted-c text-xs"><%= methodMap[tx.payment_method] || tx.payment_method %></span>
+                </td>
+                <td class="td-amount <%= tx.type === 'income' ? 'td-income' : 'td-expense' %>">
+                  <%= tx.type === 'income' ? '+' : '-' %>R$ <%= tx.amount.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+                </td>
+                <td>
+                  <span class="badge <%= tx.is_paid ? 'badge-paid' : 'badge-pending' %>">
+                    <%= tx.is_paid ? 'Pago' : 'Pendente' %>
+                  </span>
+                </td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <% } else { %>
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <h3>Nenhuma transação ainda</h3>
+          <p>Comece adicionando seu primeiro lançamento financeiro.</p>
+          <a href="/transactions/new" class="btn btn-primary btn-sm">Novo lançamento</a>
+        </div>
+        <% } %>
+      </div>
+
+    </main>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+<script src="/js/dashboard.js"></script>
+<script>
+  const INITIAL_CHART_DATA = <%- JSON.stringify(chartData) %>;
+  const CATEGORY_DATA = <%- JSON.stringify(byCategory) %>;
+  initDashboard(INITIAL_CHART_DATA, CATEGORY_DATA);
+</script>
+</body>
+</html>

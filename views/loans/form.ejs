@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><%- include('../partials/head') %></head>
+<body>
+<div class="app-layout">
+  <%- include('../partials/nav') %>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title"><%= (loan && loan.id) ? 'Editar Empréstimo' : 'Novo Empréstimo Concedido' %></div>
+      <a href="/loans" class="btn btn-ghost btn-sm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
+          <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
+        </svg>
+        Voltar
+      </a>
+    </header>
+
+    <main class="page-content">
+      <% if (error) { %>
+      <div class="alert alert-error">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+        </svg>
+        <%= error %>
+      </div>
+      <% } %>
+
+      <% const formAction = (loan && loan.id) ? `/loans/${loan.id}/update` : '/loans'; %>
+
+      <form action="<%= formAction %>" method="POST" id="loanForm">
+        <div class="form-row" style="max-width:960px">
+
+          <!-- Left column: Origem do Empréstimo (Saída) -->
+          <div style="display:flex; flex-direction:column; gap:16px">
+            <div class="card">
+              <div class="card-title" style="color:var(--expense)">
+                <span>1. Dados da Saída do Dinheiro</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="borrower_name">Nome de quem recebeu o empréstimo</label>
+                <input id="borrower_name" name="borrower_name" type="text" class="form-control"
+                       placeholder="Ex: Carlos Silva, Primo João..."
+                       value="<%= loan ? loan.borrower_name || '' : '' %>" required>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="principal_amount">Valor Emprestado (R$)</label>
+                  <input id="principal_amount" name="principal_amount" type="number" class="form-control"
+                         placeholder="Ex: 2000.00" step="0.01" min="0.01"
+                         value="<%= loan ? loan.principal_amount || '' : '' %>" required>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="loan_date">Data do Empréstimo</label>
+                  <input id="loan_date" name="loan_date" type="date" class="form-control"
+                         value="<%= loan ? loan.loan_date || today : today %>">
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="payment_source">Origem dos Recursos</label>
+                <select id="payment_source" name="payment_source" class="form-control" required onchange="handleSourceChange()">
+                  <option value="bank_account" <%= (loan && loan.payment_source === 'bank_account') ? 'selected' : '' %>>Conta Corrente / Pix / Saldo Bancário</option>
+                  <option value="credit_card" <%= (loan && loan.payment_source === 'credit_card') ? 'selected' : '' %>>Cartão de Crédito (Usa Limite do Cartão)</option>
+                </select>
+                <div id="sourceNotice" class="form-hint" style="margin-top:6px; color:var(--text-secondary)">
+                  Saída direta de saldo bancário.
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="institution_id">Instituição / Cartão Utilizado</label>
+                <select id="institution_id" name="institution_id" class="form-control">
+                  <option value="">Selecione uma instituição (opcional)</option>
+                  <% institutions.forEach(inst => { %>
+                    <option value="<%= inst.id %>" data-type="<%= inst.type %>"
+                      <%= (loan && loan.institution_id == inst.id) ? 'selected' : '' %>>
+                      <%= inst.name %> (<%= inst.type === 'credit_card' ? 'Cartão de Crédito' : 'Banco/Conta' %>)
+                    </option>
+                  <% }) %>
+                </select>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label" for="total_installments">Parcelas de Saída</label>
+                  <input id="total_installments" name="total_installments" type="number" class="form-control"
+                         value="<%= loan ? loan.total_installments || 1 : 1 %>" min="1" max="60" required oninput="calculateDifference()">
+                  <div class="form-hint">Quantas vezes saiu no seu cartão ou foi dividido</div>
+                </div>
+                <div class="form-group" style="margin-bottom:0">
+                  <label class="form-label" for="first_installment_date">Data 1ª Parcela de Saída</label>
+                  <input id="first_installment_date" name="first_installment_date" type="date" class="form-control"
+                         value="<%= loan ? loan.first_installment_date || today : today %>">
+                </div>
+              </div>
+
+              <div class="form-group mt-3" style="margin-bottom:0">
+                <label class="form-label" for="notes">Observações</label>
+                <textarea id="notes" name="notes" class="form-control" placeholder="Anotações sobre a negociação..."><%= loan ? loan.notes || '' : '' %></textarea>
+              </div>
+            </div>
+          </div>
+
+          <!-- Right column: Acordo de Retorno (Entrada) -->
+          <div style="display:flex; flex-direction:column; gap:16px">
+            <div class="card">
+              <div class="card-title" style="color:var(--income)">
+                <span>2. Acordo de Retorno / Pagamento</span>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="total_return_amount">Valor Total a Receber de Volta (R$)</label>
+                <input id="total_return_amount" name="total_return_amount" type="number" class="form-control"
+                       placeholder="Ex: 2200.00" step="0.01" min="0.01"
+                       value="<%= loan ? loan.total_return_amount || '' : '' %>" oninput="calculateDifference()">
+                <div class="form-hint">Se deixar em branco, será considerado o mesmo valor do empréstimo.</div>
+              </div>
+
+              <!-- Rendimento extra calculado em tempo real -->
+              <div id="profitCard" class="alert alert-success hidden" style="padding:10px 14px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="20 6 9 17 4 12"/></svg>
+                <span id="profitText">Rendimento extra estimado: <strong>R$ 0,00</strong></span>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="return_total_installments">Nº de Parcelas de Retorno</label>
+                  <input id="return_total_installments" name="return_total_installments" type="number" class="form-control"
+                         value="<%= loan ? loan.return_total_installments || 1 : 1 %>" min="1" max="120" oninput="calculateDifference()">
+                  <div class="form-hint">Em quantas vezes a pessoa irá te pagar</div>
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="return_first_installment_date">Data 1º Recebimento</label>
+                  <input id="return_first_installment_date" name="return_first_installment_date" type="date" class="form-control"
+                         value="<%= loan ? loan.return_first_installment_date || today : today %>">
+                </div>
+              </div>
+
+              <div id="diffInstallmentWarning" class="alert alert-warning hidden" style="padding:10px 14px">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <span id="diffInstallmentText">Aviso: O número de parcelas de retorno é diferente do parcelamento de saída.</span>
+              </div>
+
+              <div class="form-group mt-3" style="margin-bottom:0">
+                <label class="form-label" for="return_notes">Observações do Retorno</label>
+                <textarea id="return_notes" name="return_notes" class="form-control" placeholder="Ex: Pagará todo dia 10 via Pix..."><%= loan ? loan.return_notes || '' : '' %></textarea>
+              </div>
+            </div>
+
+            <!-- Submit -->
+            <div style="display:flex; gap:8px">
+              <a href="/loans" class="btn btn-ghost" style="flex:1; justify-content:center">Cancelar</a>
+              <button type="submit" class="btn btn-primary" style="flex:2; justify-content:center">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="15" height="15" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                <%= (loan && loan.id) ? 'Salvar Alterações' : 'Cadastrar Empréstimo' %>
+              </button>
+            </div>
+
+          </div>
+        </div>
+      </form>
+    </main>
+  </div>
+</div>
+
+<script src="/js/loans.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    handleSourceChange();
+    calculateDifference();
+  });
+</script>
+</body>
+</html>

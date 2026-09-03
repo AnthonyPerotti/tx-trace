@@ -1,0 +1,14 @@
+services:
+  tx-trace:
+    build: .
+    container_name: tx-trace
+    restart: unless-stopped
+    ports:
+      - "3400:3400"
+    volumes:
+      - /DATA/AppData/tx-trace:/DATA/AppData/tx-trace
+    environment:
+      - PORT=3400
+      - SESSION_SECRET=change-this-in-production
+      - DB_PATH=/DATA/AppData/tx-trace/txTrace.db
+      - NODE_ENV=production

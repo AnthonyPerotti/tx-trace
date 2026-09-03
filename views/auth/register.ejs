@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><%- include('../partials/head') %></head>
+<body>
+<div class="auth-page">
+  <div class="auth-card fade-up">
+
+    <div class="auth-logo">
+      <div class="auth-logo-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+      </div>
+      <div class="auth-logo-text">
+        <div class="logo-name">TxTrace</div>
+        <div class="logo-sub">Finanças Pessoais</div>
+      </div>
+    </div>
+
+    <h1 class="auth-heading">Criar sua conta</h1>
+    <p class="auth-sub">Comece a controlar suas finanças agora</p>
+
+    <% if (error) { %>
+    <div class="alert alert-error">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+      </svg>
+      <%= error %>
+    </div>
+    <% } %>
+
+    <form action="/register" method="POST">
+      <div class="form-group">
+        <label class="form-label" for="name">Nome completo</label>
+        <input id="name" name="name" type="text" class="form-control" placeholder="Seu nome" required autocomplete="name">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="email">Email</label>
+        <input id="email" name="email" type="email" class="form-control" placeholder="seu@email.com" required autocomplete="email">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="password">Senha</label>
+        <input id="password" name="password" type="password" class="form-control" placeholder="Mínimo 6 caracteres" required autocomplete="new-password">
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="confirmPassword">Confirmar senha</label>
+        <input id="confirmPassword" name="confirmPassword" type="password" class="form-control" placeholder="Repita a senha" required autocomplete="new-password">
+      </div>
+      <button type="submit" class="btn btn-primary w-full" style="justify-content:center; margin-top:4px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+          <circle cx="8.5" cy="7" r="4"/>
+          <line x1="20" y1="8" x2="20" y2="14"/>
+          <line x1="23" y1="11" x2="17" y2="11"/>
+        </svg>
+        Criar conta
+      </button>
+    </form>
+
+    <div class="auth-footer">
+      Já tem conta? <a href="/login">Fazer login</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>

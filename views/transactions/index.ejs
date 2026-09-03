@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><%- include('../partials/head') %></head>
+<body>
+<div class="app-layout">
+  <%- include('../partials/nav') %>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title">Transações</div>
+
+      <form action="/transactions" method="GET" id="filterForm" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+        <select name="month" class="form-control" style="width:auto" onchange="this.form.submit()">
+          <% MONTH_NAMES.forEach((m, i) => { %>
+            <option value="<%= i+1 %>" <%= (i+1 === month) ? 'selected' : '' %>><%= m %></option>
+          <% }) %>
+        </select>
+        <select name="year" class="form-control" style="width:auto" onchange="this.form.submit()">
+          <% for(let y = new Date().getFullYear(); y >= new Date().getFullYear() - 4; y--) { %>
+            <option value="<%= y %>" <%= y === year ? 'selected' : '' %>><%= y %></option>
+          <% } %>
+        </select>
+        <select name="type" class="form-control" style="width:auto" onchange="this.form.submit()">
+          <option value="">Todos os tipos</option>
+          <option value="income"  <%= filters.type === 'income'  ? 'selected' : '' %>>Receitas</option>
+          <option value="expense" <%= filters.type === 'expense' ? 'selected' : '' %>>Despesas</option>
+        </select>
+        <select name="payment_method" class="form-control" style="width:auto" onchange="this.form.submit()">
+          <option value="">Todos os métodos</option>
+          <option value="debit"  <%= filters.payment_method === 'debit'  ? 'selected' : '' %>>Débito</option>
+          <option value="credit" <%= filters.payment_method === 'credit' ? 'selected' : '' %>>Crédito</option>
+          <option value="pix"    <%= filters.payment_method === 'pix'    ? 'selected' : '' %>>Pix</option>
+          <option value="cash"   <%= filters.payment_method === 'cash'   ? 'selected' : '' %>>Dinheiro</option>
+        </select>
+        <select name="category_id" class="form-control" style="width:auto" onchange="this.form.submit()">
+          <option value="">Todas as categorias</option>
+          <% categories.forEach(cat => { %>
+            <option value="<%= cat.id %>" <%= filters.category_id == cat.id ? 'selected' : '' %>><%= cat.icon %> <%= cat.name %></option>
+          <% }) %>
+        </select>
+        <select name="institution_id" class="form-control" style="width:auto" onchange="this.form.submit()">
+          <option value="">Todas as contas</option>
+          <% institutions.forEach(inst => { %>
+            <option value="<%= inst.id %>" <%= filters.institution_id == inst.id ? 'selected' : '' %>><%= inst.name %></option>
+          <% }) %>
+        </select>
+      </form>
+
+      <a href="/transactions/new" class="btn btn-primary btn-sm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Novo
+      </a>
+    </header>
+
+    <main class="page-content">
+
+      <!-- Totals -->
+      <div class="summary-grid" style="margin-bottom:20px">
+        <div class="summary-card income">
+          <div class="sc-label">Receitas do mês</div>
+          <div class="sc-amount">R$ <%= (totals.income || 0).toLocaleString('pt-BR', {minimumFractionDigits:2}) %></div>
+        </div>
+        <div class="summary-card expense">
+          <div class="sc-label">Despesas do mês</div>
+          <div class="sc-amount">R$ <%= (totals.expenses || 0).toLocaleString('pt-BR', {minimumFractionDigits:2}) %></div>
+        </div>
+        <div class="summary-card balance">
+          <div class="sc-label">Saldo do mês</div>
+          <div class="sc-amount" style="color: <%= (totals.income - totals.expenses) >= 0 ? 'var(--income)' : 'var(--expense)' %>">
+            R$ <%= ((totals.income || 0) - (totals.expenses || 0)).toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+          </div>
+        </div>
+      </div>
+
+      <!-- Transactions Table -->
+      <div class="card">
+        <% if (transactions.length > 0) { %>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Descrição</th>
+                <th>Data</th>
+                <th>Categoria</th>
+                <th>Método / Conta</th>
+                <th>Valor</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              <% transactions.forEach(tx => {
+                const methodMap = {debit:'Débito', credit:'Crédito', pix:'Pix', cash:'Dinheiro'};
+              %>
+              <tr>
+                <td>
+                  <div style="font-weight:600; margin-bottom:2px"><%= tx.description %></div>
+                  <div style="display:flex; gap:4px; flex-wrap:wrap">
+                    <% if (tx.is_recurring && !tx.recurrence_cancelled_at) { %><span class="badge badge-recurring">↻ Recorrente</span><% } %>
+                    <% if (tx.recurrence_cancelled_at) { %><span class="badge badge-cancelled">Cancelado</span><% } %>
+                    <% if (tx.installment_number) { %><span class="badge badge-install"><%= tx.installment_number %>/<%= tx.total_installments %>x</span><% } %>
+                  </div>
+                </td>
+                <td class="text-muted-c text-sm"><%= new Date(tx.transaction_date + 'T12:00:00').toLocaleDateString('pt-BR') %></td>
+                <td>
+                  <span style="display:flex; align-items:center; gap:5px">
+                    <span style="width:8px; height:8px; background:<%= tx.category_color %>; border-radius:50%; flex-shrink:0"></span>
+                    <span class="text-sm text-secondary-c"><%= tx.category_icon %> <%= tx.category_name %></span>
+                  </span>
+                </td>
+                <td>
+                  <div class="text-sm" style="color:var(--text-secondary)"><%= methodMap[tx.payment_method] || tx.payment_method %></div>
+                  <% if (tx.institution_name) { %><div class="text-xs text-muted-c"><%= tx.institution_name %></div><% } %>
+                </td>
+                <td class="td-amount <%= tx.type === 'income' ? 'td-income' : 'td-expense' %>">
+                  <%= tx.type === 'income' ? '+' : '-' %>R$ <%= tx.amount.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+                </td>
+                <td>
+                  <form action="/transactions/<%= tx.id %>/toggle-paid" method="POST" style="display:inline">
+                    <button type="submit" class="badge <%= tx.is_paid ? 'badge-paid' : 'badge-pending' %>"
+                            style="cursor:pointer; border:none; background:inherit; padding:3px 8px">
+                      <%= tx.is_paid ? '✓ Pago' : '○ Pendente' %>
+                    </button>
+                  </form>
+                </td>
+                <td>
+                  <div style="display:flex; gap:4px; align-items:center">
+                    <a href="/transactions/<%= tx.id %>/edit" class="btn-icon btn-ghost" title="Editar">
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                      </svg>
+                    </a>
+                    <% if (tx.is_recurring && !tx.recurrence_cancelled_at) { %>
+                    <form action="/transactions/<%= tx.id %>/cancel-recurrence" method="POST" style="display:inline"
+                          onsubmit="return confirm('Cancelar recorrência desta transação?')">
+                      <button type="submit" class="btn-icon" style="background:var(--warning-bg); color:var(--warning); border:1px solid rgba(245,158,11,0.2)" title="Cancelar recorrência">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" stroke-linecap="round" stroke-linejoin="round">
+                          <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
+                        </svg>
+                      </button>
+                    </form>
+                    <% } %>
+                    <form action="/transactions/<%= tx.id %>/delete" method="POST" style="display:inline"
+                          onsubmit="return confirm('Excluir esta transação?')">
+                      <button type="submit" class="btn-icon" style="background:var(--expense-bg); color:var(--expense); border:1px solid rgba(239,68,68,0.2)" title="Excluir">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" stroke-linecap="round" stroke-linejoin="round">
+                          <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+                        </svg>
+                      </button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <% } else { %>
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+          <h3>Nenhuma transação encontrada</h3>
+          <p>Tente ajustar os filtros ou adicione um novo lançamento.</p>
+          <a href="/transactions/new" class="btn btn-primary btn-sm">Novo lançamento</a>
+        </div>
+        <% } %>
+      </div>
+
+    </main>
+  </div>
+</div>
+</body>
+</html>
