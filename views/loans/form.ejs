@@ -74,10 +74,12 @@
                 <label class="form-label" for="institution_id">Instituição / Cartão Utilizado</label>
                 <select id="institution_id" name="institution_id" class="form-control">
                   <option value="">Selecione uma instituição (opcional)</option>
-                  <% institutions.forEach(inst => { %>
+                  <% institutions.forEach(inst => { 
+                    const typeName = inst.type === 'credit_card' ? 'Cartão de Crédito' : inst.type === 'bank' ? 'Banco / Conta Corrente' : 'Conta Digital';
+                  %>
                     <option value="<%= inst.id %>" data-type="<%= inst.type %>"
                       <%= (loan && loan.institution_id == inst.id) ? 'selected' : '' %>>
-                      <%= inst.name %> (<%= inst.type === 'credit_card' ? 'Cartão de Crédito' : 'Banco/Conta' %>)
+                      <%= inst.name %> (<%= typeName %>)
                     </option>
                   <% }) %>
                 </select>

@@ -158,7 +158,7 @@
                   <select name="type" class="form-control" onchange="toggleLimitField(this.value, 'creditLimitGroup', 'invoiceDaysGroup')">
                     <option value="bank">Banco / Conta Corrente</option>
                     <option value="credit_card">Cartão de Crédito</option>
-                    <option value="digital_wallet">Carteira Digital / Dinheiro</option>
+                    <option value="digital_wallet">Conta Digital</option>
                   </select>
                 </div>
                 <div>
@@ -195,7 +195,7 @@
             <div class="item-list">
               <% if (institutions.length > 0) { %>
                 <% institutions.forEach(inst => { 
-                  const typeLabel = inst.type === 'credit_card' ? 'Cartão de Crédito' : inst.type === 'bank' ? 'Conta Bancária' : 'Carteira Digital';
+                  const typeLabel = inst.type === 'credit_card' ? 'Cartão de Crédito' : inst.type === 'bank' ? 'Conta Bancária' : 'Conta Digital';
                 %>
                   <div class="setting-item" style="border-left: 3px solid <%= inst.color %>">
                     <span class="item-dot" style="background:<%= inst.color %>"></span>
@@ -291,7 +291,7 @@
           <select id="editInstType" name="type" class="form-control" onchange="toggleLimitField(this.value, 'editInstLimitGroup')">
             <option value="bank">Banco / Conta Corrente</option>
             <option value="credit_card">Cartão de Crédito</option>
-            <option value="digital_wallet">Carteira Digital / Dinheiro</option>
+            <option value="digital_wallet">Conta Digital</option>
           </select>
         </div>
         <div>

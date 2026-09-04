@@ -86,7 +86,7 @@ router.get('/new', requireAuth, (req, res) => {
   ).all(userId);
 
   const institutions = db.prepare(
-    'SELECT * FROM payment_institutions WHERE user_id = ? ORDER BY name'
+    'SELECT id, user_id, name, type, color, credit_limit, invoice_closing_day, invoice_due_day FROM payment_institutions WHERE user_id = ? ORDER BY name'
   ).all(userId);
 
   const today = new Date().toISOString().split('T')[0];

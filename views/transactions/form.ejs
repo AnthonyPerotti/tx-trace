@@ -129,19 +129,29 @@
           <div style="display:flex; flex-direction:column; gap:16px">
 
             <!-- Institution -->
-            <div class="card card-sm">
+            <div class="card card-sm" id="instCard" style="border-left: 3px solid transparent; transition: border-color var(--t);">
               <div class="form-group" style="margin-bottom:0">
-                <label class="form-label" for="institution_id">Conta / Instituição</label>
-                <select id="institution_id" name="institution_id" class="form-control">
-                  <option value="">Sem conta específica</option>
-                  <% institutions.forEach(inst => { %>
-                    <option value="<%= inst.id %>"
-                            data-type="<%= inst.type %>"
-                            <%= (transaction && transaction.institution_id == inst.id) ? 'selected' : '' %>>
-                      <%= inst.name %>
-                    </option>
-                  <% }) %>
-                </select>
+                <div style="display:flex; justify-content:space-between; align-items:center">
+                  <label class="form-label" for="institution_id" style="margin-bottom:0">Conta / Instituição</label>
+                  <span id="instTypeBadge" class="text-xs" style="font-weight:600; color:var(--text-muted)"></span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:6px">
+                  <span id="instColorIndicator" style="width:12px; height:38px; border-radius:4px; background:var(--border-default); flex-shrink:0; transition:background var(--t);"></span>
+                  <select id="institution_id" name="institution_id" class="form-control" style="margin-top:0" onchange="updateInstitutionVisual()">
+                    <option value="" data-type="" data-color="">Sem conta específica</option>
+                    <% institutions.forEach(inst => { 
+                      const typeLabel = inst.type === 'credit_card' ? 'Cartão de Crédito' : inst.type === 'bank' ? 'Banco / Conta Corrente' : 'Conta Digital';
+                    %>
+                      <option value="<%= inst.id %>"
+                              data-type="<%= inst.type %>"
+                              data-color="<%= inst.color %>"
+                              data-type-label="<%= typeLabel %>"
+                              <%= (transaction && transaction.institution_id == inst.id) ? 'selected' : '' %>>
+                        <%= inst.name %> (<%= typeLabel %>)
+                      </option>
+                    <% }) %>
+                  </select>
+                </div>
                 <div class="form-hint">
                   <a href="/settings" style="color:var(--primary); font-size:11px">+ Adicionar conta em Configurações</a>
                 </div>
