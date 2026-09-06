@@ -11,6 +11,7 @@ const transactionRoutes = require('./routes/transactions');
 const loanRoutes        = require('./routes/loans');
 const settingsRoutes    = require('./routes/settings');
 const invoiceRoutes     = require('./routes/invoices');
+const investmentRoutes  = require('./routes/investments');
 
 const app  = express();
 const PORT = process.env.PORT || 3400;
@@ -57,6 +58,7 @@ app.use('/transactions', transactionRoutes);
 app.use('/loans',        loanRoutes);
 app.use('/settings',     settingsRoutes);
 app.use('/invoices',     invoiceRoutes);
+app.use('/investments',  investmentRoutes);
 
 // ─── Health check ────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => res.status(200).send('OK'));

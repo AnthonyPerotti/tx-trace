@@ -143,7 +143,41 @@ CREATE TABLE IF NOT EXISTS loan_return_installments (
   FOREIGN KEY (loan_return_id) REFERENCES loan_returns(id) ON DELETE CASCADE
 );
 
+-- Investments (fixed income & variable income)
+CREATE TABLE IF NOT EXISTS investments (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id INTEGER NOT NULL,
+  type TEXT NOT NULL DEFAULT 'fixed_income', -- 'fixed_income' | 'variable_income'
+  name TEXT NOT NULL,
+  broker TEXT DEFAULT NULL,
+  category_id INTEGER DEFAULT NULL,
+  invested_amount REAL NOT NULL,
+  current_amount REAL DEFAULT NULL,
+  start_date TEXT NOT NULL,
+  notes TEXT DEFAULT NULL,
+  status TEXT NOT NULL DEFAULT 'active', -- 'active' | 'redeemed'
+
+  -- Fixed income specific
+  rate_type TEXT DEFAULT NULL,     -- 'pre' | 'pos_cdi' | 'pos_ipca' | 'pos_selic'
+  rate_value REAL DEFAULT NULL,    -- e.g. 13.5 for pre, 120 for 120% CDI, 6 for IPCA+6
+  maturity_date TEXT DEFAULT NULL,
+  is_liquid INTEGER DEFAULT 0,
+
+  -- Variable income specific
+  asset_class TEXT DEFAULT NULL,   -- 'stock' | 'fii' | 'etf' | 'crypto' | 'other'
+  ticker TEXT DEFAULT NULL,
+  quantity REAL DEFAULT NULL,
+  avg_price REAL DEFAULT NULL,
+  current_price REAL DEFAULT NULL,
+  last_updated_at TEXT DEFAULT NULL, -- when current_price was last set (manual or future API)
+
+  created_at TEXT DEFAULT (datetime('now', 'localtime')),
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+  FOREIGN KEY (category_id) REFERENCES categories(id) ON DELETE SET NULL
+);
+
 -- Seed global default categories
+
 INSERT OR IGNORE INTO categories (id, user_id, name, icon, color, is_default) VALUES
   (1,  NULL, 'Alimentação', '🍔', '#f97316', 1),
   (2,  NULL, 'Assinatura',  '📺', '#8b5cf6', 1),

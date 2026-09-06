@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head><%- include('../partials/head') %></head>
+<body>
+<div class="app-layout">
+  <%- include('../partials/nav') %>
+
+  <div class="main-content">
+    <header class="topbar">
+      <div class="topbar-title"><%= investment ? 'Editar Investimento' : 'Novo Investimento' %></div>
+      <a href="/investments" class="btn btn-ghost btn-sm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Voltar
+      </a>
+    </header>
+
+    <main class="page-content">
+      <div class="card" style="max-width:700px; margin:0 auto">
+        <% if (error) { %>
+          <div class="alert-error" style="margin-bottom:16px"><%= error %></div>
+        <% } %>
+
+        <form method="POST" action="<%= investment ? '/investments/' + investment.id + '/update' : '/investments' %>">
+
+          <!-- Type selector -->
+          <div class="form-group">
+            <label class="form-label">Tipo de Investimento</label>
+            <div class="inv-type-tabs" id="typeTabs">
+              <label class="inv-type-tab" id="tabFixed">
+                <input type="radio" name="type" value="fixed_income"
+                  <%= (!investment || investment.type === 'fixed_income') ? 'checked' : '' %>
+                  onchange="switchType('fixed_income')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+                </svg>
+                Renda Fixa
+              </label>
+              <label class="inv-type-tab" id="tabVar">
+                <input type="radio" name="type" value="variable_income"
+                  <%= (investment && investment.type === 'variable_income') ? 'checked' : '' %>
+                  onchange="switchType('variable_income')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+                </svg>
+                Renda Variável
+              </label>
+            </div>
+          </div>
+
+          <!-- Common fields -->
+          <div class="form-row">
+            <div class="form-group" style="flex:2">
+              <label class="form-label" for="inv_name">Nome do Investimento <span class="req">*</span></label>
+              <input type="text" id="inv_name" name="name" class="form-control" required
+                placeholder="Ex: CDB Banco X 120% CDI, PETR4, Bitcoin"
+                value="<%= investment ? investment.name : '' %>">
+            </div>
+            <div class="form-group" style="flex:1">
+              <label class="form-label" for="inv_broker">Corretora / Banco</label>
+              <input type="text" id="inv_broker" name="broker" class="form-control"
+                placeholder="Ex: XP, Rico, BTG"
+                value="<%= investment ? (investment.broker || '') : '' %>">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group" style="flex:1">
+              <label class="form-label" for="inv_invested">Valor Aplicado (R$) <span class="req">*</span></label>
+              <input type="number" id="inv_invested" name="invested_amount" class="form-control"
+                step="0.01" min="0.01" required placeholder="0,00"
+                value="<%= investment ? investment.invested_amount : '' %>">
+            </div>
+            <div class="form-group" style="flex:1">
+              <label class="form-label" for="inv_start">Data da Aplicação <span class="req">*</span></label>
+              <input type="date" id="inv_start" name="start_date" class="form-control" required
+                value="<%= investment ? investment.start_date : today %>">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="inv_category">Categoria (opcional)</label>
+            <select id="inv_category" name="category_id" class="form-control">
+              <option value="">Sem categoria</option>
+              <% categories.forEach(cat => { %>
+                <option value="<%= cat.id %>" <%= (investment && investment.category_id == cat.id) ? 'selected' : '' %>>
+                  <%= cat.icon %> <%= cat.name %>
+                </option>
+              <% }) %>
+            </select>
+          </div>
+
+          <!-- Fixed income fields -->
+          <div id="fieldsFixed" class="inv-type-section">
+            <hr class="form-divider">
+            <div class="form-section-label">Renda Fixa</div>
+
+            <div class="form-row">
+              <div class="form-group" style="flex:1">
+                <label class="form-label" for="inv_rate_type">Tipo de Taxa</label>
+                <select id="inv_rate_type" name="rate_type" class="form-control" onchange="updateRateLabel()">
+                  <option value="">Não especificado</option>
+                  <option value="pre"      <%= (investment && investment.rate_type === 'pre')      ? 'selected' : '' %>>Pré-fixado (% a.a.)</option>
+                  <option value="pos_cdi"  <%= (investment && investment.rate_type === 'pos_cdi')  ? 'selected' : '' %>>Pós-fixado (% do CDI)</option>
+                  <option value="pos_ipca" <%= (investment && investment.rate_type === 'pos_ipca') ? 'selected' : '' %>>IPCA+ (% a.a.)</option>
+                  <option value="pos_selic" <%= (investment && investment.rate_type === 'pos_selic') ? 'selected' : '' %>>Selic+ (% a.a.)</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:1">
+                <label class="form-label" id="rateValueLabel" for="inv_rate_value">Valor da Taxa</label>
+                <input type="number" id="inv_rate_value" name="rate_value" class="form-control"
+                  step="0.01" min="0" placeholder="Ex: 13.5 ou 120"
+                  value="<%= investment ? (investment.rate_value || '') : '' %>">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group" style="flex:1">
+                <label class="form-label" for="inv_maturity">Data de Vencimento</label>
+                <input type="date" id="inv_maturity" name="maturity_date" class="form-control"
+                  value="<%= investment ? (investment.maturity_date || '') : '' %>">
+              </div>
+              <div class="form-group" style="flex:1">
+                <label class="form-label" for="inv_current_amount">Valor Atual (R$)</label>
+                <input type="number" id="inv_current_amount" name="current_amount" class="form-control"
+                  step="0.01" min="0" placeholder="Deixe em branco se não souber"
+                  value="<%= investment ? (investment.current_amount || '') : '' %>">
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label inv-checkbox-label">
+                <input type="checkbox" name="is_liquid" value="1"
+                  <%= (investment && investment.is_liquid) ? 'checked' : '' %>>
+                Liquidez diária (resgate a qualquer momento)
+              </label>
+            </div>
+          </div>
+
+          <!-- Variable income fields -->
+          <div id="fieldsVar" class="inv-type-section" style="display:none">
+            <hr class="form-divider">
+            <div class="form-section-label">Renda Variável</div>
+
+            <div class="form-row">
+              <div class="form-group" style="flex:1">
+                <label class="form-label" for="inv_asset_class">Classe do Ativo</label>
+                <select id="inv_asset_class" name="asset_class" class="form-control">
+                  <option value="">Selecione...</option>
+                  <option value="stock"  <%= (investment && investment.asset_class === 'stock')  ? 'selected' : '' %>>Ações</option>
+                  <option value="fii"    <%= (investment && investment.asset_class === 'fii')    ? 'selected' : '' %>>FII (Fundos Imobiliários)</option>
+                  <option value="etf"    <%= (investment && investment.asset_class === 'etf')    ? 'selected' : '' %>>ETF</option>
+                  <option value="crypto" <%= (investment && investment.asset_class === 'crypto') ? 'selected' : '' %>>Criptomoedas</option>
+                  <option value="other"  <%= (investment && investment.asset_class === 'other')  ? 'selected' : '' %>>Outro</option>
+                </select>
+              </div>
+              <div class="form-group" style="flex:1">
+                <label class="form-label" for="inv_ticker">Ticker / Código</label>
+                <input type="text" id="inv_ticker" name="ticker" class="form-control"
+                  placeholder="Ex: PETR4, HGLG11, BTC"
+                  style="text-transform:uppercase"
+                  value="<%= investment ? (investment.ticker || '') : '' %>">
+              </div>
+            </div>
+
+            <div class="form-row">
+              <div class="form-group" style="flex:1">
+                <label class="form-label" for="inv_quantity">Quantidade de Cotas / Unidades</label>
+                <input type="number" id="inv_quantity" name="quantity" class="form-control"
+                  step="any" min="0" placeholder="0"
+                  value="<%= investment ? (investment.quantity || '') : '' %>">
+              </div>
+              <div class="form-group" style="flex:1">
+                <label class="form-label" for="inv_avg_price">Preço Médio (R$)</label>
+                <input type="number" id="inv_avg_price" name="avg_price" class="form-control"
+                  step="0.01" min="0" placeholder="0,00"
+                  value="<%= investment ? (investment.avg_price || '') : '' %>">
+              </div>
+              <div class="form-group" style="flex:1">
+                <label class="form-label" for="inv_current_price">Preço Atual (R$)</label>
+                <input type="number" id="inv_current_price" name="current_price" class="form-control"
+                  step="0.01" min="0" placeholder="0,00"
+                  value="<%= investment ? (investment.current_price || '') : '' %>">
+              </div>
+            </div>
+          </div>
+
+          <!-- Notes -->
+          <hr class="form-divider">
+          <div class="form-group">
+            <label class="form-label" for="inv_notes">Observações</label>
+            <textarea id="inv_notes" name="notes" class="form-control" rows="3"
+              placeholder="Informações adicionais sobre este investimento..."><%= investment ? (investment.notes || '') : '' %></textarea>
+          </div>
+
+          <div style="display:flex; gap:8px; justify-content:flex-end; margin-top:8px">
+            <a href="/investments" class="btn btn-ghost btn-sm">Cancelar</a>
+            <button type="submit" class="btn btn-primary btn-sm">
+              <%= investment ? 'Salvar Alterações' : 'Criar Investimento' %>
+            </button>
+          </div>
+
+        </form>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="/js/investments.js"></script>
+<script>
+  // Init form type based on current value
+  const currentType = '<%= investment ? investment.type : "fixed_income" %>';
+  switchType(currentType);
+  updateRateLabel();
+</script>
+</body>
+</html>
