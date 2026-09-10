@@ -64,12 +64,59 @@ function getDb() {
 
     // ── Migrations: safely add columns that may not exist in older databases ──
     const migrations = [
+      // v1: invoice days (original)
       "ALTER TABLE payment_institutions ADD COLUMN invoice_closing_day INTEGER DEFAULT 5",
-      "ALTER TABLE payment_institutions ADD COLUMN invoice_due_day INTEGER DEFAULT 10"
+      "ALTER TABLE payment_institutions ADD COLUMN invoice_due_day INTEGER DEFAULT 10",
+
+      // v2: card linked to parent institution (bank → card hierarchy)
+      "ALTER TABLE payment_institutions ADD COLUMN parent_institution_id INTEGER DEFAULT NULL REFERENCES payment_institutions(id) ON DELETE SET NULL",
+
+      // v3: soft-delete for default categories (user can hide but not permanently delete shared rows)
+      "ALTER TABLE categories ADD COLUMN is_hidden INTEGER NOT NULL DEFAULT 0",
+      "ALTER TABLE categories ADD COLUMN hidden_by_user_id INTEGER DEFAULT NULL",
+
+      // v4: loan direction (given = you lent, received = you borrowed)
+      "ALTER TABLE loans ADD COLUMN loan_direction TEXT NOT NULL DEFAULT 'given'",
+      "ALTER TABLE loans ADD COLUMN creditor_name TEXT DEFAULT NULL",
+      "ALTER TABLE loans ADD COLUMN interest_rate REAL DEFAULT NULL",
+      "ALTER TABLE loans ADD COLUMN interest_rate_type TEXT DEFAULT NULL",
+      "ALTER TABLE loans ADD COLUMN total_with_interest REAL DEFAULT NULL",
     ];
     migrations.forEach(sql => {
-      try { db.exec(sql); } catch (_) { /* column already exists, ignore */ }
+      try { db.exec(sql); } catch (_) { /* column/constraint already exists, ignore */ }
     });
+
+    // v4b: new tables for parallel interest return stream and per-user hidden default categories
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS user_hidden_categories (
+        user_id     INTEGER NOT NULL,
+        category_id INTEGER NOT NULL,
+        created_at  TEXT DEFAULT (datetime('now', 'localtime')),
+        PRIMARY KEY (user_id, category_id)
+      );
+
+      CREATE TABLE IF NOT EXISTS loan_interest_returns (
+        id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+        loan_id               INTEGER NOT NULL UNIQUE,
+        total_amount          REAL NOT NULL,
+        total_installments    INTEGER NOT NULL DEFAULT 1,
+        first_installment_date TEXT NOT NULL,
+        notes                 TEXT DEFAULT NULL,
+        created_at            TEXT DEFAULT (datetime('now', 'localtime')),
+        FOREIGN KEY (loan_id) REFERENCES loans(id) ON DELETE CASCADE
+      );
+      CREATE TABLE IF NOT EXISTS loan_interest_return_installments (
+        id                        INTEGER PRIMARY KEY AUTOINCREMENT,
+        loan_interest_return_id   INTEGER NOT NULL,
+        installment_number        INTEGER NOT NULL,
+        due_date                  TEXT NOT NULL,
+        amount                    REAL NOT NULL,
+        is_received               INTEGER NOT NULL DEFAULT 0,
+        received_date             TEXT DEFAULT NULL,
+        FOREIGN KEY (loan_interest_return_id) REFERENCES loan_interest_returns(id) ON DELETE CASCADE
+      );
+    `);
+
   }
   return db;
 }

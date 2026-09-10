@@ -57,22 +57,33 @@ router.get('/', requireAuth, (req, res) => {
       AND strftime('%m', transaction_date) = ?
   `).get(userId, yearStr, monthStr);
 
-  const categories = db.prepare(
-    'SELECT * FROM categories WHERE user_id IS NULL OR user_id = ? ORDER BY name'
-  ).all(userId);
+  const categories = db.prepare(`
+    SELECT * FROM categories
+    WHERE (user_id = ? OR (user_id IS NULL AND id NOT IN (SELECT category_id FROM user_hidden_categories WHERE user_id = ?)))
+    ORDER BY name
+  `).all(userId, userId);
 
-  const institutions = db.prepare(
-    'SELECT * FROM payment_institutions WHERE user_id = ? ORDER BY name'
-  ).all(userId);
+  const institutions = db.prepare(`
+    SELECT pi.*, parent.name AS parent_name
+    FROM payment_institutions pi
+    LEFT JOIN payment_institutions parent ON pi.parent_institution_id = parent.id
+    WHERE pi.user_id = ?
+    ORDER BY pi.name
+  `).all(userId);
 
   const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
+  const txYears = db.prepare("SELECT DISTINCT CAST(strftime('%Y', transaction_date) AS INTEGER) as y FROM transactions WHERE user_id = ? ORDER BY y DESC").all(userId).map(r => r.y);
+  const currentYear = new Date().getFullYear();
+  const availableYears = [...new Set([currentYear, ...txYears])].sort((a, b) => b - a);
 
   res.render('transactions/index', {
     title: 'Transações — TxTrace',
     transactions, categories, institutions, totals, year, month,
     filters: { category_id, institution_id, payment_method, type },
-    MONTH_NAMES
+    MONTH_NAMES, availableYears
   });
+
 });
 
 // ─── New Form ────────────────────────────────────────────────────────────────
@@ -81,13 +92,19 @@ router.get('/new', requireAuth, (req, res) => {
   const db = getDb();
   const userId = req.session.userId;
 
-  const categories = db.prepare(
-    'SELECT * FROM categories WHERE user_id IS NULL OR user_id = ? ORDER BY name'
-  ).all(userId);
+  const categories = db.prepare(`
+    SELECT * FROM categories
+    WHERE (user_id = ? OR (user_id IS NULL AND id NOT IN (SELECT category_id FROM user_hidden_categories WHERE user_id = ?)))
+    ORDER BY name
+  `).all(userId, userId);
 
-  const institutions = db.prepare(
-    'SELECT id, user_id, name, type, color, credit_limit, invoice_closing_day, invoice_due_day FROM payment_institutions WHERE user_id = ? ORDER BY name'
-  ).all(userId);
+  const institutions = db.prepare(`
+    SELECT pi.*, parent.name AS parent_name
+    FROM payment_institutions pi
+    LEFT JOIN payment_institutions parent ON pi.parent_institution_id = parent.id
+    WHERE pi.user_id = ?
+    ORDER BY pi.name
+  `).all(userId);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -169,8 +186,20 @@ router.post('/', requireAuth, (req, res) => {
     res.redirect('/transactions');
   } catch (err) {
     console.error('Create transaction error:', err);
-    const categories   = db.prepare('SELECT * FROM categories WHERE user_id IS NULL OR user_id = ? ORDER BY name').all(userId);
-    const institutions = db.prepare('SELECT * FROM payment_institutions WHERE user_id = ? ORDER BY name').all(userId);
+    const categories = db.prepare(`
+      SELECT * FROM categories
+      WHERE (user_id = ? OR (user_id IS NULL AND id NOT IN (SELECT category_id FROM user_hidden_categories WHERE user_id = ?)))
+      ORDER BY name
+    `).all(userId, userId);
+
+    const institutions = db.prepare(`
+      SELECT pi.*, parent.name AS parent_name
+      FROM payment_institutions pi
+      LEFT JOIN payment_institutions parent ON pi.parent_institution_id = parent.id
+      WHERE pi.user_id = ?
+      ORDER BY pi.name
+    `).all(userId);
+
     res.render('transactions/form', {
       title: 'Nova Transação — TxTrace',
       transaction: req.body, categories, institutions,
@@ -187,8 +216,19 @@ router.get('/:id/edit', requireAuth, (req, res) => {
   const tx = db.prepare('SELECT * FROM transactions WHERE id = ? AND user_id = ?').get(req.params.id, userId);
   if (!tx) return res.redirect('/transactions');
 
-  const categories   = db.prepare('SELECT * FROM categories WHERE user_id IS NULL OR user_id = ? ORDER BY name').all(userId);
-  const institutions = db.prepare('SELECT * FROM payment_institutions WHERE user_id = ? ORDER BY name').all(userId);
+  const categories = db.prepare(`
+    SELECT * FROM categories
+    WHERE (user_id = ? OR (user_id IS NULL AND id NOT IN (SELECT category_id FROM user_hidden_categories WHERE user_id = ?)))
+    ORDER BY name
+  `).all(userId, userId);
+
+  const institutions = db.prepare(`
+    SELECT pi.*, parent.name AS parent_name
+    FROM payment_institutions pi
+    LEFT JOIN payment_institutions parent ON pi.parent_institution_id = parent.id
+    WHERE pi.user_id = ?
+    ORDER BY pi.name
+  `).all(userId);
 
   res.render('transactions/form', {
     title: 'Editar Transação — TxTrace',

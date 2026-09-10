@@ -7,7 +7,7 @@
 
   <div class="main-content">
     <header class="topbar">
-      <div class="topbar-title"><%= (loan && loan.id) ? 'Editar Empréstimo' : 'Novo Empréstimo Concedido' %></div>
+      <div class="topbar-title"><%= (loan && loan.id) ? 'Editar Empréstimo' : 'Novo Empréstimo' %></div>
       <a href="/loans" class="btn btn-ghost btn-sm">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="14" height="14">
           <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
@@ -26,31 +26,70 @@
       </div>
       <% } %>
 
-      <% const formAction = (loan && loan.id) ? `/loans/${loan.id}/update` : '/loans'; %>
+      <% 
+        const formAction = (loan && loan.id) ? `/loans/${loan.id}/update` : '/loans'; 
+        const isReceived = loan && loan.loan_direction === 'received';
+      %>
 
       <form action="<%= formAction %>" method="POST" id="loanForm">
+        <!-- Direction Selector Toggle -->
+        <div class="card mb-4" style="max-width:960px">
+          <div class="form-label" style="margin-bottom:10px">Tipo / Sentido do Empréstimo</div>
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px">
+            <label class="direction-btn <%= !isReceived ? 'active' : '' %>" id="dirGivenLabel" onclick="setLoanDirection('given')">
+              <input type="radio" name="loan_direction" value="given" <%= !isReceived ? 'checked' : '' %> style="display:none">
+              <div style="font-weight:700; font-size:14px; margin-bottom:4px; color:var(--text-main)">🤝 Emprestei Dinheiro (Concedido)</div>
+              <div class="text-xs text-muted-c">Você emprestou dinheiro a uma pessoa e irá receber de volta</div>
+            </label>
+            <label class="direction-btn <%= isReceived ? 'active' : '' %>" id="dirReceivedLabel" onclick="setLoanDirection('received')">
+              <input type="radio" name="loan_direction" value="received" <%= isReceived ? 'checked' : '' %> style="display:none">
+              <div style="font-weight:700; font-size:14px; margin-bottom:4px; color:var(--text-main)">🏦 Peguei Emprestado (Tomado / Banco)</div>
+              <div class="text-xs text-muted-c">Você pegou crédito com banco ou terceiro e pagará as parcelas</div>
+            </label>
+          </div>
+        </div>
+
         <div class="form-row" style="max-width:960px">
 
-          <!-- Left column: Origem do Empréstimo (Saída) -->
+          <!-- Left Column -->
           <div style="display:flex; flex-direction:column; gap:16px">
+
+            <!-- Card: Dados Principais -->
             <div class="card">
-              <div class="card-title" style="color:var(--expense)">
+              <!-- Header for Given -->
+              <div class="card-title loan-given-section <%= isReceived ? 'hidden' : '' %>" style="color:var(--expense)">
                 <span>1. Dados da Saída do Dinheiro</span>
               </div>
-
-              <div class="form-group">
-                <label class="form-label" for="borrower_name">Nome de quem recebeu o empréstimo</label>
-                <input id="borrower_name" name="borrower_name" type="text" class="form-control"
-                       placeholder="Ex: Carlos Silva, Primo João..."
-                       value="<%= loan ? loan.borrower_name || '' : '' %>" required>
+              <!-- Header for Received -->
+              <div class="card-title loan-received-section <%= isReceived ? '' : 'hidden' %>" style="color:var(--income)">
+                <span>1. Dados do Empréstimo Tomado (Entrada)</span>
               </div>
 
+              <!-- Field: Borrower Name (Given) -->
+              <div class="form-group loan-given-section <%= isReceived ? 'hidden' : '' %>">
+                <label class="form-label" for="borrower_name">Nome de quem recebeu o empréstimo (Devedor)</label>
+                <input id="borrower_name" name="borrower_name" type="text" class="form-control"
+                       placeholder="Ex: Carlos Silva, Primo João..."
+                       value="<%= loan ? loan.borrower_name || '' : '' %>" <%= isReceived ? '' : 'required' %>>
+              </div>
+
+              <!-- Field: Creditor Name (Received) -->
+              <div class="form-group loan-received-section <%= isReceived ? '' : 'hidden' %>">
+                <label class="form-label" for="creditor_name">Instituição Credora / Banco</label>
+                <input id="creditor_name" name="creditor_name" type="text" class="form-control"
+                       placeholder="Ex: Banco do Brasil, Nubank, Santander..."
+                       value="<%= loan ? loan.creditor_name || '' : '' %>">
+              </div>
+
+              <!-- Amount and Date -->
               <div class="form-row">
                 <div class="form-group">
-                  <label class="form-label" for="principal_amount">Valor Emprestado (R$)</label>
+                  <label class="form-label loan-given-section <%= isReceived ? 'hidden' : '' %>" for="principal_amount">Valor Emprestado (R$)</label>
+                  <label class="form-label loan-received-section <%= isReceived ? '' : 'hidden' %>" for="principal_amount">Valor Líquido Recebido (R$)</label>
                   <input id="principal_amount" name="principal_amount" type="number" class="form-control"
-                         placeholder="Ex: 2000.00" step="0.01" min="0.01"
-                         value="<%= loan ? loan.principal_amount || '' : '' %>" required>
+                         placeholder="Ex: 5000.00" step="0.01" min="0.01"
+                         value="<%= loan ? loan.principal_amount || '' : '' %>"
+                         required oninput="autoFillReturn(this.value)">
                 </div>
                 <div class="form-group">
                   <label class="form-label" for="loan_date">Data do Empréstimo</label>
@@ -59,10 +98,11 @@
                 </div>
               </div>
 
-              <div class="form-group">
+              <!-- Payment Source (Given only) -->
+              <div class="form-group loan-given-section <%= isReceived ? 'hidden' : '' %>" id="paymentSourceGroup">
                 <label class="form-label" for="payment_source">Origem dos Recursos</label>
-                <select id="payment_source" name="payment_source" class="form-control" required onchange="handleSourceChange()">
-                  <option value="bank_account" <%= (loan && loan.payment_source === 'bank_account') ? 'selected' : '' %>>Conta Corrente / Pix / Saldo Bancário</option>
+                <select id="payment_source" name="payment_source" class="form-control" onchange="handleSourceChange()">
+                  <option value="bank_account" <%= (!loan || loan.payment_source === 'bank_account') ? 'selected' : '' %>>Conta Corrente / Pix / Saldo Bancário</option>
                   <option value="credit_card" <%= (loan && loan.payment_source === 'credit_card') ? 'selected' : '' %>>Cartão de Crédito (Usa Limite do Cartão)</option>
                 </select>
                 <div id="sourceNotice" class="form-hint" style="margin-top:6px; color:var(--text-secondary)">
@@ -70,27 +110,33 @@
                 </div>
               </div>
 
+              <!-- Institution Selector -->
               <div class="form-group">
-                <label class="form-label" for="institution_id">Instituição / Cartão Utilizado</label>
+                <label class="form-label loan-given-section <%= isReceived ? 'hidden' : '' %>" for="institution_id">Conta ou Cartão Utilizado</label>
+                <label class="form-label loan-received-section <%= isReceived ? '' : 'hidden' %>" for="institution_id">Conta Bancária onde o Valor Entrou</label>
                 <select id="institution_id" name="institution_id" class="form-control">
-                  <option value="">Selecione uma instituição (opcional)</option>
-                  <% institutions.forEach(inst => { 
+                  <option value="" data-type="">Selecione uma conta (opcional)</option>
+                  <% institutions.forEach(inst => {
                     const typeName = inst.type === 'credit_card' ? 'Cartão de Crédito' : inst.type === 'bank' ? 'Banco / Conta Corrente' : 'Conta Digital';
+                    const displayLabel = (inst.type === 'credit_card' && inst.parent_name)
+                      ? `${inst.name} (${inst.parent_name} • Cartão)`
+                      : `${inst.name} (${typeName})`;
                   %>
                     <option value="<%= inst.id %>" data-type="<%= inst.type %>"
                       <%= (loan && loan.institution_id == inst.id) ? 'selected' : '' %>>
-                      <%= inst.name %> (<%= typeName %>)
+                      <%= displayLabel %>
                     </option>
                   <% }) %>
                 </select>
               </div>
 
-              <div class="form-row">
+              <!-- Outflow Installments (Given only) -->
+              <div class="form-row loan-given-section <%= isReceived ? 'hidden' : '' %>">
                 <div class="form-group" style="margin-bottom:0">
-                  <label class="form-label" for="total_installments">Parcelas de Saída</label>
+                  <label class="form-label" for="total_installments">Parcelas da Saída</label>
                   <input id="total_installments" name="total_installments" type="number" class="form-control"
-                         value="<%= loan ? loan.total_installments || 1 : 1 %>" min="1" max="60" required oninput="calculateDifference()">
-                  <div class="form-hint">Quantas vezes saiu no seu cartão ou foi dividido</div>
+                         value="<%= loan ? loan.total_installments || 1 : 1 %>" min="1" max="60" oninput="calculateDifference()">
+                  <div class="form-hint">Quantas vezes saiu no cartão ou foi parcelado</div>
                 </div>
                 <div class="form-group" style="margin-bottom:0">
                   <label class="form-label" for="first_installment_date">Data 1ª Parcela de Saída</label>
@@ -101,24 +147,27 @@
 
               <div class="form-group mt-3" style="margin-bottom:0">
                 <label class="form-label" for="notes">Observações</label>
-                <textarea id="notes" name="notes" class="form-control" placeholder="Anotações sobre a negociação..."><%= loan ? loan.notes || '' : '' %></textarea>
+                <textarea id="notes" name="notes" class="form-control" placeholder="Anotações gerais sobre o empréstimo..."><%= loan ? loan.notes || '' : '' %></textarea>
               </div>
             </div>
+
           </div>
 
-          <!-- Right column: Acordo de Retorno (Entrada) -->
+          <!-- Right Column -->
           <div style="display:flex; flex-direction:column; gap:16px">
-            <div class="card">
+
+            <!-- MODE 1: GIVEN (Retorno do Tomador) -->
+            <div class="card loan-given-section <%= isReceived ? 'hidden' : '' %>">
               <div class="card-title" style="color:var(--income)">
                 <span>2. Acordo de Retorno / Pagamento</span>
               </div>
 
               <div class="form-group">
-                <label class="form-label" for="total_return_amount">Valor Total a Receber de Volta (R$)</label>
+                <label class="form-label" for="total_return_amount">Valor do Retorno Principal (R$)</label>
                 <input id="total_return_amount" name="total_return_amount" type="number" class="form-control"
-                       placeholder="Ex: 2200.00" step="0.01" min="0.01"
+                       placeholder="Ex: 5000.00" step="0.01" min="0.01"
                        value="<%= loan ? loan.total_return_amount || '' : '' %>" oninput="calculateDifference()">
-                <div class="form-hint">Se deixar em branco, será considerado o mesmo valor do empréstimo.</div>
+                <div class="form-hint">Pré-preenchido com o valor emprestado. Deixe em branco para <strong>não registrar</strong> parcelas de retorno.</div>
               </div>
 
               <!-- Rendimento extra calculado em tempo real -->
@@ -146,13 +195,99 @@
                 <span id="diffInstallmentText">Aviso: O número de parcelas de retorno é diferente do parcelamento de saída.</span>
               </div>
 
-              <div class="form-group mt-3" style="margin-bottom:0">
+              <div class="form-group mt-3">
                 <label class="form-label" for="return_notes">Observações do Retorno</label>
                 <textarea id="return_notes" name="return_notes" class="form-control" placeholder="Ex: Pagará todo dia 10 via Pix..."><%= loan ? loan.return_notes || '' : '' %></textarea>
               </div>
+
+              <!-- Retorno Paralelo de Juros (Duplo Retorno) -->
+              <div style="margin-top:14px; padding:12px; background:rgba(99, 102, 241, 0.05); border:1px dashed rgba(99, 102, 241, 0.3); border-radius:8px">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:0">
+                  <input type="checkbox" name="has_interest_return" id="hasInterestReturnCheckbox" value="1"
+                         <%= (loan && loan.interest_return_id) ? 'checked' : '' %> onchange="toggleInterestReturnFields(this.checked)">
+                  <span style="font-weight:600; font-size:13px; color:var(--text-main)">✨ Adicionar fluxo paralelo de Juros / Lucro</span>
+                </label>
+                <div id="interestReturnFields" class="<%= (loan && loan.interest_return_id) ? '' : 'hidden' %>" style="margin-top:12px">
+                  <div class="form-row">
+                    <div class="form-group">
+                      <label class="form-label" for="interest_return_amount">Valor Total dos Juros (R$)</label>
+                      <input id="interest_return_amount" name="interest_return_amount" type="number" class="form-control"
+                             placeholder="Ex: 500.00" step="0.01" min="0.01"
+                             value="<%= loan ? loan.interest_total_amount || '' : '' %>">
+                    </div>
+                    <div class="form-group">
+                      <label class="form-label" for="interest_return_installments">Nº Parcelas de Juros</label>
+                      <input id="interest_return_installments" name="interest_return_installments" type="number" class="form-control"
+                             value="<%= loan ? loan.interest_total_installments || 1 : 1 %>" min="1" max="120">
+                    </div>
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label" for="interest_first_installment_date">Data 1ª Parcela de Juros</label>
+                    <input id="interest_first_installment_date" name="interest_first_installment_date" type="date" class="form-control"
+                           value="<%= loan ? loan.interest_first_date || today : today %>">
+                  </div>
+                  <div class="form-group" style="margin-bottom:0">
+                    <label class="form-label" for="interest_return_notes">Observações dos Juros</label>
+                    <input id="interest_return_notes" name="interest_return_notes" type="text" class="form-control"
+                           placeholder="Ex: Juros cobrados de 10% em 5x..." value="<%= loan ? loan.interest_notes || '' : '' %>">
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <!-- Submit -->
+            <!-- MODE 2: RECEIVED (Pagamento ao Banco) -->
+            <div class="card loan-received-section <%= isReceived ? '' : 'hidden' %>">
+              <div class="card-title" style="color:var(--expense)">
+                <span>2. Condições e Pagamento das Parcelas</span>
+              </div>
+
+              <!-- Juros -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="interest_rate">Taxa de Juros (%)</label>
+                  <input id="interest_rate" name="interest_rate" type="number" class="form-control"
+                         placeholder="Ex: 2.5" step="0.01" min="0"
+                         value="<%= loan ? loan.interest_rate || '' : '' %>" oninput="calculateReceivedLoan()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="interest_rate_type">Tipo de Taxa</label>
+                  <select id="interest_rate_type" name="interest_rate_type" class="form-control" onchange="calculateReceivedLoan()">
+                    <option value="monthly" <%= (!loan || loan.interest_rate_type === 'monthly') ? 'selected' : '' %>>Ao mês</option>
+                    <option value="annual" <%= (loan && loan.interest_rate_type === 'annual') ? 'selected' : '' %>>Ao ano</option>
+                    <option value="total" <%= (loan && loan.interest_rate_type === 'total') ? 'selected' : '' %>>Total fixo</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label" for="total_with_interest">Valor Total a Pagar com Juros (R$)</label>
+                <input id="total_with_interest" name="total_with_interest" type="number" class="form-control"
+                       placeholder="Ex: 6200.00" step="0.01" min="0.01"
+                       value="<%= loan ? loan.total_with_interest || '' : '' %>" oninput="calculateReceivedLoan()">
+                <div class="form-hint">Calculado automaticamente ou preencha o valor exato contratado com o banco.</div>
+              </div>
+
+              <!-- Parcelamento a pagar -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label" for="rec_total_installments">Nº de Parcelas a Pagar</label>
+                  <input id="rec_total_installments" type="number" class="form-control"
+                         value="<%= loan ? loan.total_installments || 12 : 12 %>" min="1" max="240"
+                         oninput="document.getElementById('total_installments').value = this.value; calculateReceivedLoan()">
+                </div>
+                <div class="form-group">
+                  <label class="form-label" for="rec_first_installment_date">1º Vencimento</label>
+                  <input id="rec_first_installment_date" type="date" class="form-control"
+                         value="<%= loan ? loan.first_installment_date || today : today %>"
+                         oninput="document.getElementById('first_installment_date').value = this.value">
+                </div>
+              </div>
+
+              <!-- Live estimate card -->
+              <div id="receivedInstallmentEstimate" class="alert alert-info hidden" style="padding:10px 14px"></div>
+            </div>
+
+            <!-- Submit Buttons -->
             <div style="display:flex; gap:8px">
               <a href="/loans" class="btn btn-ghost" style="flex:1; justify-content:center">Cancelar</a>
               <button type="submit" class="btn btn-primary" style="flex:2; justify-content:center">
@@ -170,11 +305,31 @@
   </div>
 </div>
 
+<style>
+  .direction-btn {
+    display: block;
+    padding: 14px 16px;
+    border-radius: 8px;
+    border: 2px solid var(--border-default);
+    background: var(--bg-surface-subtle, rgba(255,255,255,0.02));
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .direction-btn:hover {
+    border-color: var(--primary);
+  }
+  .direction-btn.active {
+    border-color: var(--primary);
+    background: rgba(99, 102, 241, 0.1);
+  }
+</style>
+
 <script src="/js/loans.js"></script>
 <script>
   document.addEventListener('DOMContentLoaded', () => {
     handleSourceChange();
     calculateDifference();
+    calculateReceivedLoan();
   });
 </script>
 </body>

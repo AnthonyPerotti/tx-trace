@@ -104,7 +104,7 @@ router.get('/', requireAuth, (req, res) => {
     FROM transactions ${txSummaryWhere}
   `).get(...txSummaryParams);
 
-  // 2. Loans monthly flow (returns received = income; loan principal installments paid = expense)
+  // 2. Loans monthly flow (returns received + parallel interest returns + bank loan principal = inflow; loan installments paid = outflow)
   const loanInflowParams = [userId, yearStr, monthStr];
   let loanInflowWhere = `
     WHERE l.user_id = ?
@@ -116,13 +116,52 @@ router.get('/', requireAuth, (req, res) => {
     loanInflowParams.push(institutionId);
   }
 
-  const loanInflow = db.prepare(`
+  const returnInflow = db.prepare(`
     SELECT COALESCE(SUM(lri.amount), 0) as total
     FROM loan_return_installments lri
     JOIN loan_returns lr ON lri.loan_return_id = lr.id
     JOIN loans l ON lr.loan_id = l.id
     ${loanInflowWhere}
   `).get(...loanInflowParams).total;
+
+  const interestInflowParams = [userId, yearStr, monthStr];
+  let interestInflowWhere = `
+    WHERE l.user_id = ?
+      AND strftime('%Y', liri.due_date) = ?
+      AND strftime('%m', liri.due_date) = ?
+  `;
+  if (institutionId) {
+    interestInflowWhere += ' AND l.institution_id = ?';
+    interestInflowParams.push(institutionId);
+  }
+
+  const interestInflow = db.prepare(`
+    SELECT COALESCE(SUM(liri.amount), 0) as total
+    FROM loan_interest_return_installments liri
+    JOIN loan_interest_returns lir ON liri.loan_interest_return_id = lir.id
+    JOIN loans l ON lir.loan_id = l.id
+    ${interestInflowWhere}
+  `).get(...interestInflowParams).total;
+
+  const borrowedInflowParams = [userId, yearStr, monthStr];
+  let borrowedInflowWhere = `
+    WHERE l.user_id = ?
+      AND l.loan_direction = 'received'
+      AND strftime('%Y', l.loan_date) = ?
+      AND strftime('%m', l.loan_date) = ?
+  `;
+  if (institutionId) {
+    borrowedInflowWhere += ' AND l.institution_id = ?';
+    borrowedInflowParams.push(institutionId);
+  }
+
+  const borrowedInflow = db.prepare(`
+    SELECT COALESCE(SUM(l.principal_amount), 0) as total
+    FROM loans l
+    ${borrowedInflowWhere}
+  `).get(...borrowedInflowParams).total;
+
+  const loanInflow = returnInflow + interestInflow + borrowedInflow;
 
   const loanOutflowParams = [userId, yearStr, monthStr];
   let loanOutflowWhere = `
@@ -211,7 +250,7 @@ router.get('/', requireAuth, (req, res) => {
     `).get(...(institutionId ? [userId, String(y), m, institutionId] : [userId, String(y), m]));
 
     // Loan monthly values
-    const lIn = db.prepare(`
+    const lReturnIn = db.prepare(`
       SELECT COALESCE(SUM(lri.amount), 0) as total
       FROM loan_return_installments lri
       JOIN loan_returns lr ON lri.loan_return_id = lr.id
@@ -221,6 +260,29 @@ router.get('/', requireAuth, (req, res) => {
         AND strftime('%m', lri.due_date) = ?
         ${institutionId ? 'AND l.institution_id = ?' : ''}
     `).get(...(institutionId ? [userId, String(y), m, institutionId] : [userId, String(y), m])).total;
+
+    const lInterestIn = db.prepare(`
+      SELECT COALESCE(SUM(liri.amount), 0) as total
+      FROM loan_interest_return_installments liri
+      JOIN loan_interest_returns lir ON liri.loan_interest_return_id = lir.id
+      JOIN loans l ON lir.loan_id = l.id
+      WHERE l.user_id = ?
+        AND strftime('%Y', liri.due_date) = ?
+        AND strftime('%m', liri.due_date) = ?
+        ${institutionId ? 'AND l.institution_id = ?' : ''}
+    `).get(...(institutionId ? [userId, String(y), m, institutionId] : [userId, String(y), m])).total;
+
+    const lBorrowedIn = db.prepare(`
+      SELECT COALESCE(SUM(l.principal_amount), 0) as total
+      FROM loans l
+      WHERE l.user_id = ?
+        AND l.loan_direction = 'received'
+        AND strftime('%Y', l.loan_date) = ?
+        AND strftime('%m', l.loan_date) = ?
+        ${institutionId ? 'AND l.institution_id = ?' : ''}
+    `).get(...(institutionId ? [userId, String(y), m, institutionId] : [userId, String(y), m])).total;
+
+    const lIn = lReturnIn + lInterestIn + lBorrowedIn;
 
     const lOut = db.prepare(`
       SELECT COALESCE(SUM(li.amount), 0) as total
@@ -289,14 +351,22 @@ router.get('/', requireAuth, (req, res) => {
 
   const institutions = db.prepare('SELECT * FROM payment_institutions WHERE user_id = ? ORDER BY name').all(userId);
 
+  // Years with actual data (transactions or loans)
+  const txYears   = db.prepare("SELECT DISTINCT CAST(strftime('%Y', transaction_date) AS INTEGER) as y FROM transactions WHERE user_id = ? ORDER BY y DESC").all(userId).map(r => r.y);
+  const loanYears = db.prepare("SELECT DISTINCT CAST(strftime('%Y', loan_date) AS INTEGER) as y FROM loans WHERE user_id = ? ORDER BY y DESC").all(userId).map(r => r.y);
+  const currentYear = new Date().getFullYear();
+  const availableYears = [...new Set([currentYear, ...txYears, ...loanYears])].sort((a, b) => b - a);
+
   const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+
 
   res.render('dashboard', {
     title: 'Dashboard — TxTrace',
     summary, byCategory, chartData, cardSummaries,
     recentTransactions, institutions, year, month,
-    institutionId, viewMode, MONTH_NAMES
+    institutionId, viewMode, MONTH_NAMES, availableYears
   });
+
 });
 
 // ─── API endpoint for dynamic chart reloading ────────────────────────────────

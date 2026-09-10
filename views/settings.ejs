@@ -85,6 +85,12 @@
                 <div class="section-title">Categorias Financeiras</div>
                 <div class="section-sub">Personalize as categorias para classificar suas despesas e receitas</div>
               </div>
+              <form action="/settings/categories/restore-defaults" method="POST" style="margin:0">
+                <button type="submit" class="btn btn-ghost btn-sm" title="Restaurar categorias padrão que foram ocultadas"
+                        onclick="return confirm('Restaurar todas as categorias padrão que você ocultou?')">
+                  ↻ Restaurar Padrões
+                </button>
+              </form>
             </div>
 
             <!-- Adicionar Categoria Form -->
@@ -108,10 +114,8 @@
                   <span class="item-dot" style="background:<%= cat.color %>"></span>
                   <span class="item-icon"><%= cat.icon %></span>
                   <span class="item-name"><%= cat.name %></span>
-                  <% if (cat.is_default) { %>
-                    <span class="item-badge">Padrão</span>
-                  <% } else { %>
-                    <div style="display:flex; gap:4px; align-items:center">
+                  <div style="display:flex; gap:4px; align-items:center">
+                    <% if (!cat.is_default) { %>
                       <!-- Botão Editar Categoria -->
                       <button type="button" class="btn-icon btn-ghost" title="Editar Categoria"
                               onclick="openCategoryEditModal('<%= cat.id %>', '<%= cat.name %>', '<%= cat.icon %>', '<%= cat.color %>')">
@@ -126,8 +130,17 @@
                           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
                         </button>
                       </form>
-                    </div>
-                  <% } %>
+                    <% } else { %>
+                      <span class="item-badge">Padrão</span>
+                      <!-- Ocultar categoria padrão -->
+                      <form action="/settings/categories/<%= cat.id %>/hide" method="POST"
+                            onsubmit="return confirm('Ocultar esta categoria padrão? Você pode restaurá-la depois.')">
+                        <button type="submit" class="btn-icon" style="color:var(--text-muted); border:none; cursor:pointer; background:transparent" title="Ocultar Categoria Padrão">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                        </button>
+                      </form>
+                    <% } %>
+                  </div>
                 </div>
               <% }) %>
             </div>
@@ -155,10 +168,10 @@
               <div class="form-row" style="margin-bottom:10px">
                 <div>
                   <label class="form-label">Tipo</label>
-                  <select name="type" class="form-control" onchange="toggleLimitField(this.value, 'creditLimitGroup', 'invoiceDaysGroup')">
+                  <select name="type" id="instTypeSelect" class="form-control" onchange="toggleInstFields(this.value)">
                     <option value="bank">Banco / Conta Corrente</option>
-                    <option value="credit_card">Cartão de Crédito</option>
                     <option value="digital_wallet">Conta Digital</option>
+                    <option value="credit_card">Cartão de Crédito</option>
                   </select>
                 </div>
                 <div>
@@ -167,7 +180,19 @@
                 </div>
               </div>
 
-              <!-- Campos de fatura do cartão -->
+              <!-- Vincular cartão a uma instituição pai (apenas se Tipo = Cartão de Crédito) -->
+              <div class="form-group hidden" id="parentInstGroup">
+                <label class="form-label" for="parent_institution_id">Vincular a uma Conta / Banco (opcional)</label>
+                <select name="parent_institution_id" id="parent_institution_id" class="form-control">
+                  <option value="">Não vincular (Cartão Avulso)</option>
+                  <% institutions.filter(i => i.type !== 'credit_card').forEach(inst => { %>
+                    <option value="<%= inst.id %>"><%= inst.name %></option>
+                  <% }) %>
+                </select>
+                <div class="form-hint">Associa o cartão visualmente a uma conta/banco existente.</div>
+              </div>
+
+              <!-- Campos de fatura do cartão (se Tipo = Cartão de Crédito) -->
               <div class="form-group hidden" id="creditLimitGroup">
                 <label class="form-label" for="credit_limit">Limite do Cartão (R$)</label>
                 <input type="number" id="credit_limit" name="credit_limit" class="form-control" placeholder="Ex: 5000.00" step="0.01" min="0">
@@ -187,45 +212,147 @@
                 </div>
               </div>
 
-              <button type="submit" class="btn btn-primary btn-sm w-full" style="justify-content:center; margin-top:10px">
+              <!-- Opção de adicionar cartão junto com a Conta (se Tipo != Cartão de Crédito) -->
+              <div id="accountHasCardGroup" style="margin-top: 10px; margin-bottom: 12px; padding: 12px; background: rgba(99, 102, 241, 0.05); border-radius: 8px; border: 1px dashed rgba(99, 102, 241, 0.25)">
+                <label style="display:flex; align-items:center; gap:8px; cursor:pointer; margin-bottom:0">
+                  <input type="checkbox" name="has_card" value="1" id="hasCardCheckbox" onchange="toggleAccountCardFields(this.checked)">
+                  <span style="font-size:13px; font-weight:600; color:var(--text-main)">💳 Adicionar também um cartão de crédito a esta conta</span>
+                </label>
+                <div id="accountCardSubFields" class="hidden" style="margin-top:12px">
+                  <div class="form-group" style="margin-bottom:8px">
+                    <label class="form-label">Nome do Cartão (opcional)</label>
+                    <input type="text" name="card_name" class="form-control" placeholder="Ex: Roxinho, Cartão Black (ou em branco)">
+                  </div>
+                  <div class="form-row" style="margin-bottom:8px">
+                    <div>
+                      <label class="form-label">Limite do Cartão (R$)</label>
+                      <input type="number" name="card_credit_limit" class="form-control" placeholder="Ex: 5000.00" step="0.01" min="0">
+                    </div>
+                    <div>
+                      <label class="form-label">Cor do Cartão</label>
+                      <input type="color" name="card_color" value="#818cf8" class="form-control" style="padding:4px; height:42px">
+                    </div>
+                  </div>
+                  <div class="form-row">
+                    <div>
+                      <label class="form-label">Dia Fechamento</label>
+                      <input type="number" name="card_closing_day" class="form-control" value="5" min="1" max="31">
+                    </div>
+                    <div>
+                      <label class="form-label">Dia Vencimento</label>
+                      <input type="number" name="card_due_day" class="form-control" value="10" min="1" max="31">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <button type="submit" class="btn btn-primary btn-sm w-full" style="justify-content:center; margin-top:6px">
                 Salvar Instituição
               </button>
             </form>
 
             <div class="item-list">
-              <% if (institutions.length > 0) { %>
-                <% institutions.forEach(inst => { 
-                  const typeLabel = inst.type === 'credit_card' ? 'Cartão de Crédito' : inst.type === 'bank' ? 'Conta Bancária' : 'Conta Digital';
+              <% if (institutions.length > 0) { 
+                const accounts = institutions.filter(i => i.type !== 'credit_card');
+                const standaloneCards = institutions.filter(i => i.type === 'credit_card' && !i.parent_institution_id);
+              %>
+                <!-- Contas e seus cartões vinculados -->
+                <% accounts.forEach(account => { 
+                  const typeLabel = account.type === 'bank' ? 'Conta Bancária' : 'Conta Digital';
+                  const linkedCards = institutions.filter(i => i.parent_institution_id === account.id);
                 %>
-                  <div class="setting-item" style="border-left: 3px solid <%= inst.color %>">
-                    <span class="item-dot" style="background:<%= inst.color %>"></span>
-                    <div style="flex:1">
-                      <div class="item-name"><%= inst.name %></div>
-                      <div class="text-xs text-muted-c">
-                        <%= typeLabel %>
-                        <% if (inst.type === 'credit_card' && inst.credit_limit) { %>
-                          • Limite: R$ <%= inst.credit_limit.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
-                        <% } %>
+                  <div style="background:var(--bg-surface-subtle, rgba(255,255,255,0.02)); border:1px solid var(--border-subtle); border-radius:8px; margin-bottom:10px; overflow:hidden">
+                    <!-- Linha da Conta -->
+                    <div class="setting-item" style="border-left: 4px solid <%= account.color %>; border-radius:0; margin-bottom:0">
+                      <span class="item-dot" style="background:<%= account.color %>"></span>
+                      <div style="flex:1">
+                        <div class="item-name"><%= account.name %></div>
+                        <div class="text-xs text-muted-c"><%= typeLabel %></div>
+                      </div>
+                      <div style="display:flex; gap:6px; align-items:center">
+                        <!-- Botão + Cartão -->
+                        <button type="button" class="btn btn-secondary btn-xs" title="Adicionar Cartão vinculado a esta conta"
+                                onclick="openQuickAddCardModal('<%= account.id %>', '<%= account.name %>')">
+                          + Cartão
+                        </button>
+                        <!-- Botão Editar -->
+                        <button type="button" class="btn-icon btn-ghost" title="Editar Instituição"
+                                onclick="openInstEditModal('<%= account.id %>', '<%= account.name %>', '<%= account.type %>', '<%= account.color %>', '', '', '', '')">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <!-- Botão Excluir -->
+                        <form action="/settings/institutions/<%= account.id %>/delete" method="POST" onsubmit="return confirm('Deseja excluir esta conta? Os cartões vinculados a ela serão desvinculados.')">
+                          <button type="submit" class="btn-icon" style="background:var(--expense-bg); color:var(--expense); border:none; cursor:pointer" title="Excluir">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                          </button>
+                        </form>
                       </div>
                     </div>
-                    <div style="display:flex; gap:4px; align-items:center">
-                      <!-- Botão Editar Instituição -->
-                      <button type="button" class="btn-icon btn-ghost" title="Editar Instituição"
-                              onclick="openInstEditModal('<%= inst.id %>', '<%= inst.name %>', '<%= inst.type %>', '<%= inst.color %>', '<%= inst.credit_limit || '' %>', '<%= inst.invoice_closing_day || 5 %>', '<%= inst.invoice_due_day || 10 %>')">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" stroke-linecap="round" stroke-linejoin="round">
-                          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                          <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                      </button>
-                      <!-- Botão Excluir Instituição -->
-                      <form action="/settings/institutions/<%= inst.id %>/delete" method="POST" onsubmit="return confirm('Deseja excluir esta instituição? Suas transações ficarão sem instituição vinculada.')">
-                        <button type="submit" class="btn-icon" style="background:var(--expense-bg); color:var(--expense); border:none; cursor:pointer" title="Excluir">
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
-                        </button>
-                      </form>
-                    </div>
+
+                    <!-- Cartões vinculados a esta conta no mesmo card -->
+                    <% if (linkedCards.length > 0) { %>
+                      <div style="background:rgba(0,0,0,0.12); padding: 6px 12px 6px 28px; border-top: 1px solid var(--border-subtle); display:flex; flex-direction:column; gap:6px">
+                        <% linkedCards.forEach(card => { %>
+                          <div style="display:flex; align-items:center; justify-content:space-between; padding: 6px 8px; border-radius:6px; background:var(--bg-surface, rgba(255,255,255,0.03)); border-left: 3px solid <%= card.color %>">
+                            <div style="display:flex; align-items:center; gap:8px">
+                              <span style="color:var(--text-muted); font-size:12px">↳</span>
+                              <span class="item-dot" style="background:<%= card.color %>; width:8px; height:8px"></span>
+                              <div>
+                                <div style="font-size:13px; font-weight:600"><%= card.name %></div>
+                                <div class="text-xs text-muted-c">
+                                  Cartão de Crédito
+                                  <% if (card.credit_limit) { %> • Limite: R$ <%= card.credit_limit.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %><% } %>
+                                  • Fecha dia <%= card.invoice_closing_day || 5 %> • Vence dia <%= card.invoice_due_day || 10 %>
+                                </div>
+                              </div>
+                            </div>
+                            <div style="display:flex; gap:4px; align-items:center">
+                              <button type="button" class="btn-icon btn-ghost" title="Editar Cartão"
+                                      onclick="openInstEditModal('<%= card.id %>', '<%= card.name %>', '<%= card.type %>', '<%= card.color %>', '<%= card.credit_limit || '' %>', '<%= card.invoice_closing_day || 5 %>', '<%= card.invoice_due_day || 10 %>', '<%= card.parent_institution_id || '' %>')">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                              </button>
+                              <form action="/settings/institutions/<%= card.id %>/delete" method="POST" onsubmit="return confirm('Deseja excluir este cartão?')">
+                                <button type="submit" class="btn-icon" style="background:var(--expense-bg); color:var(--expense); border:none; cursor:pointer" title="Excluir Cartão">
+                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                                </button>
+                              </form>
+                            </div>
+                          </div>
+                        <% }) %>
+                      </div>
+                    <% } %>
                   </div>
                 <% }) %>
+
+                <!-- Cartões Avulsos (sem banco vinculado) -->
+                <% if (standaloneCards.length > 0) { %>
+                  <div class="form-label" style="margin-top:14px; margin-bottom:8px">Cartões Avulsos (Sem Conta Vinculada)</div>
+                  <% standaloneCards.forEach(card => { %>
+                    <div class="setting-item" style="border-left: 3px solid <%= card.color %>">
+                      <span class="item-dot" style="background:<%= card.color %>"></span>
+                      <div style="flex:1">
+                        <div class="item-name"><%= card.name %></div>
+                        <div class="text-xs text-muted-c">
+                          Cartão de Crédito
+                          <% if (card.credit_limit) { %> • Limite: R$ <%= card.credit_limit.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %><% } %>
+                          • Fecha dia <%= card.invoice_closing_day || 5 %> • Vence dia <%= card.invoice_due_day || 10 %>
+                        </div>
+                      </div>
+                      <div style="display:flex; gap:4px; align-items:center">
+                        <button type="button" class="btn-icon btn-ghost" title="Editar Cartão"
+                                onclick="openInstEditModal('<%= card.id %>', '<%= card.name %>', '<%= card.type %>', '<%= card.color %>', '<%= card.credit_limit || '' %>', '<%= card.invoice_closing_day || 5 %>', '<%= card.invoice_due_day || 10 %>', '<%= card.parent_institution_id || '' %>')">
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
+                        <form action="/settings/institutions/<%= card.id %>/delete" method="POST" onsubmit="return confirm('Deseja excluir este cartão?')">
+                          <button type="submit" class="btn-icon" style="background:var(--expense-bg); color:var(--expense); border:none; cursor:pointer" title="Excluir">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+                          </button>
+                        </form>
+                      </div>
+                    </div>
+                  <% }) %>
+                <% } %>
+
               <% } else { %>
                 <div class="text-xs text-muted-c text-center py-4">Nenhuma instituição cadastrada ainda. Adicione sua conta ou cartão acima.</div>
               <% } %>
@@ -282,16 +409,16 @@
     </div>
     <form id="instEditForm" method="POST">
       <div class="form-group">
-        <label class="form-label" for="editInstName">Nome da Instituição</label>
+        <label class="form-label" for="editInstName">Nome da Instituição / Cartão</label>
         <input type="text" id="editInstName" name="name" class="form-control" required>
       </div>
       <div class="form-row mb-3">
         <div>
           <label class="form-label" for="editInstType">Tipo</label>
-          <select id="editInstType" name="type" class="form-control" onchange="toggleLimitField(this.value, 'editInstLimitGroup')">
+          <select id="editInstType" name="type" class="form-control" onchange="toggleEditInstFields(this.value)">
             <option value="bank">Banco / Conta Corrente</option>
-            <option value="credit_card">Cartão de Crédito</option>
             <option value="digital_wallet">Conta Digital</option>
+            <option value="credit_card">Cartão de Crédito</option>
           </select>
         </div>
         <div>
@@ -299,6 +426,18 @@
           <input type="color" id="editInstColor" name="color" class="form-control" style="padding:4px; height:42px" required>
         </div>
       </div>
+
+      <!-- Vincular a conta pai se for cartão -->
+      <div class="form-group hidden" id="editInstParentGroup">
+        <label class="form-label" for="editInstParentId">Vincular a uma Conta / Banco</label>
+        <select id="editInstParentId" name="parent_institution_id" class="form-control">
+          <option value="">Não vincular (Cartão Avulso)</option>
+          <% institutions.filter(i => i.type !== 'credit_card').forEach(inst => { %>
+            <option value="<%= inst.id %>"><%= inst.name %></option>
+          <% }) %>
+        </select>
+      </div>
+
       <div class="form-group hidden" id="editInstLimitGroup">
         <label class="form-label" for="editInstLimit">Limite do Cartão (R$)</label>
         <input type="number" id="editInstLimit" name="credit_limit" class="form-control" step="0.01" min="0">
@@ -323,17 +462,104 @@
   </div>
 </div>
 
+<!-- Modal Rápido: Adicionar Cartão a uma Conta Específica -->
+<div class="modal-overlay" id="quickAddCardModal">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="quickAddCardTitle">Adicionar Cartão de Crédito</div>
+      <button type="button" class="modal-close" onclick="closeModal('quickAddCardModal')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <form action="/settings/institutions" method="POST">
+      <input type="hidden" name="type" value="credit_card">
+      <input type="hidden" name="parent_institution_id" id="quickAddCardParentId" value="">
+
+      <div class="form-group">
+        <label class="form-label" for="quickAddCardName">Nome do Cartão</label>
+        <input type="text" id="quickAddCardName" name="name" class="form-control" placeholder="Ex: Roxinho, Cartão Black" required>
+      </div>
+
+      <div class="form-row mb-3">
+        <div>
+          <label class="form-label" for="quickAddCardLimit">Limite do Cartão (R$)</label>
+          <input type="number" id="quickAddCardLimit" name="credit_limit" class="form-control" placeholder="Ex: 5000.00" step="0.01" min="0">
+        </div>
+        <div>
+          <label class="form-label" for="quickAddCardColor">Cor</label>
+          <input type="color" id="quickAddCardColor" name="color" value="#818cf8" class="form-control" style="padding:4px; height:42px" required>
+        </div>
+      </div>
+
+      <div class="form-row" style="margin-bottom:12px">
+        <div>
+          <label class="form-label">Dia de Fechamento</label>
+          <input type="number" name="invoice_closing_day" class="form-control" value="5" min="1" max="31">
+          <div class="form-hint">Padrão: dia 5</div>
+        </div>
+        <div>
+          <label class="form-label">Dia de Vencimento</label>
+          <input type="number" name="invoice_due_day" class="form-control" value="10" min="1" max="31">
+          <div class="form-hint">Padrão: dia 10</div>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:8px; margin-top:16px">
+        <button type="button" class="btn btn-ghost" style="flex:1; justify-content:center" onclick="closeModal('quickAddCardModal')">Cancelar</button>
+        <button type="submit" class="btn btn-primary" style="flex:2; justify-content:center">Adicionar Cartão</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
-  function toggleLimitField(val, limitGroupId, invoiceDaysGroupId) {
-    const limitGroup       = document.getElementById(limitGroupId);
-    const invoiceDaysGroup = invoiceDaysGroupId ? document.getElementById(invoiceDaysGroupId) : null;
+  function toggleInstFields(val) {
+    const parentGroup   = document.getElementById('parentInstGroup');
+    const limitGroup    = document.getElementById('creditLimitGroup');
+    const invoiceDays   = document.getElementById('invoiceDaysGroup');
+    const hasCardGroup  = document.getElementById('accountHasCardGroup');
+
     if (val === 'credit_card') {
-      if (limitGroup) limitGroup.classList.remove('hidden');
-      if (invoiceDaysGroup) invoiceDaysGroup.classList.remove('hidden');
+      if (parentGroup)  parentGroup.classList.remove('hidden');
+      if (limitGroup)   limitGroup.classList.remove('hidden');
+      if (invoiceDays)  invoiceDays.classList.remove('hidden');
+      if (hasCardGroup) hasCardGroup.classList.add('hidden');
     } else {
-      if (limitGroup) limitGroup.classList.add('hidden');
-      if (invoiceDaysGroup) invoiceDaysGroup.classList.add('hidden');
+      if (parentGroup)  parentGroup.classList.add('hidden');
+      if (limitGroup)   limitGroup.classList.add('hidden');
+      if (invoiceDays)  invoiceDays.classList.add('hidden');
+      if (hasCardGroup) hasCardGroup.classList.remove('hidden');
     }
+  }
+
+  function toggleAccountCardFields(checked) {
+    const subFields = document.getElementById('accountCardSubFields');
+    if (subFields) {
+      if (checked) subFields.classList.remove('hidden');
+      else subFields.classList.add('hidden');
+    }
+  }
+
+  function toggleEditInstFields(val) {
+    const parentGroup = document.getElementById('editInstParentGroup');
+    const limitGroup  = document.getElementById('editInstLimitGroup');
+    const daysGroup   = document.getElementById('editInstInvoiceDaysGroup');
+    if (val === 'credit_card') {
+      if (parentGroup) parentGroup.classList.remove('hidden');
+      if (limitGroup)  limitGroup.classList.remove('hidden');
+      if (daysGroup)   daysGroup.classList.remove('hidden');
+    } else {
+      if (parentGroup) parentGroup.classList.add('hidden');
+      if (limitGroup)  limitGroup.classList.add('hidden');
+      if (daysGroup)   daysGroup.classList.add('hidden');
+    }
+  }
+
+  function openQuickAddCardModal(accountId, accountName) {
+    document.getElementById('quickAddCardTitle').textContent = `Adicionar Cartão para ${accountName}`;
+    document.getElementById('quickAddCardParentId').value = accountId;
+    document.getElementById('quickAddCardName').value = `${accountName} (Cartão)`;
+    document.getElementById('quickAddCardModal').classList.add('open');
   }
 
   function openCategoryEditModal(id, name, icon, color) {
@@ -344,7 +570,7 @@
     document.getElementById('categoryEditModal').classList.add('open');
   }
 
-  function openInstEditModal(id, name, type, color, limit, closingDay, dueDay) {
+  function openInstEditModal(id, name, type, color, limit, closingDay, dueDay, parentInstId) {
     document.getElementById('instEditForm').action = `/settings/institutions/${id}/update`;
     document.getElementById('editInstName').value        = name;
     document.getElementById('editInstType').value        = type;
@@ -352,7 +578,9 @@
     document.getElementById('editInstLimit').value       = limit || '';
     document.getElementById('editInstClosingDay').value  = closingDay || 5;
     document.getElementById('editInstDueDay').value      = dueDay     || 10;
-    toggleLimitField(type, 'editInstLimitGroup', 'editInstInvoiceDaysGroup');
+    const parentSelect = document.getElementById('editInstParentId');
+    if (parentSelect) parentSelect.value = parentInstId || '';
+    toggleEditInstFields(type);
     document.getElementById('instEditModal').classList.add('open');
   }
 

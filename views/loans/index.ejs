@@ -9,17 +9,22 @@
     <header class="topbar">
       <div class="topbar-title">Empréstimos</div>
 
-      <!-- Month Filter for loan dashboard flow -->
+      <!-- Filters: Month, Year, Direction -->
       <form action="/loans" method="GET" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+        <select name="direction" class="form-control" style="width:auto" onchange="this.form.submit()">
+          <option value="all" <%= (!direction || direction === 'all') ? 'selected' : '' %>>Todos os Empréstimos</option>
+          <option value="given" <%= direction === 'given' ? 'selected' : '' %>>🤝 Emprestei (Concedidos)</option>
+          <option value="received" <%= direction === 'received' ? 'selected' : '' %>>🏦 Peguei Emprestado (Tomados)</option>
+        </select>
         <select name="month" class="form-control" style="width:auto" onchange="this.form.submit()">
           <% MONTH_NAMES.forEach((m, i) => { %>
             <option value="<%= i+1 %>" <%= (i+1 === month) ? 'selected' : '' %>><%= m %></option>
           <% }) %>
         </select>
         <select name="year" class="form-control" style="width:auto" onchange="this.form.submit()">
-          <% for(let y = new Date().getFullYear(); y >= new Date().getFullYear() - 4; y--) { %>
+          <% availableYears.forEach(y => { %>
             <option value="<%= y %>" <%= y === year ? 'selected' : '' %>><%= y %></option>
-          <% } %>
+          <% }) %>
         </select>
       </form>
 
@@ -44,29 +49,29 @@
             <div class="sc-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
-            <div class="sc-label">Retornos Previstos no Mês</div>
+            <div class="sc-label">Entradas no Mês</div>
             <div class="sc-amount">R$ <%= summary.monthly_inflow.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
-            <div class="sc-sub">Entradas de parcelas de devolução</div>
+            <div class="sc-sub">Devoluções recebidas + crédito tomado</div>
           </div>
 
           <div class="summary-card expense">
             <div class="sc-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/></svg>
             </div>
-            <div class="sc-label">Saídas de Fatura no Mês</div>
+            <div class="sc-label">Saídas no Mês</div>
             <div class="sc-amount">R$ <%= summary.monthly_outflow.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
-            <div class="sc-sub">Parcelas desembolsadas / faturas</div>
+            <div class="sc-sub">Parcelas pagas ao banco / desembolsos</div>
           </div>
 
           <div class="summary-card balance">
             <div class="sc-icon">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
             </div>
-            <div class="sc-label">Saldo Líquido de Empréstimos</div>
+            <div class="sc-label">Saldo Líquido do Mês</div>
             <div class="sc-amount" style="color: <%= summary.monthly_net >= 0 ? 'var(--income)' : 'var(--expense)' %>">
               R$ <%= summary.monthly_net.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
             </div>
-            <div class="sc-sub"><%= summary.monthly_net >= 0 ? 'Entrando mais do que saindo' : 'Desembolso maior que retorno' %></div>
+            <div class="sc-sub"><%= summary.monthly_net >= 0 ? 'Entrando mais do que saindo' : 'Saídas maiores que entradas' %></div>
           </div>
         </div>
       </div>
@@ -74,60 +79,68 @@
       <!-- General Overall Summary metrics -->
       <div class="summary-grid mb-4">
         <div class="summary-card expense">
-          <div class="sc-label">Total Geral Emprestado</div>
+          <div class="sc-label">Total Emprestado (Concedido)</div>
           <div class="sc-amount">R$ <%= summary.total_lent.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
-          <div class="sc-sub"><%= summary.active_count %> ativo(s) | <%= summary.settled_count %> quitado(s)</div>
-        </div>
-
-        <div class="summary-card income">
-          <div class="sc-label">Total Geral já Retornado</div>
-          <div class="sc-amount">R$ <%= summary.total_received.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
-          <div class="sc-sub">Recebido em parcelas</div>
+          <div class="sc-sub">Já retornado: R$ <%= summary.total_received.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
         </div>
 
         <div class="summary-card balance">
-          <div class="sc-label">Pendente de Retorno Total</div>
-          <% 
-            const totalExpectedReturn = loans.reduce((acc, l) => acc + (l.total_return_amount || l.principal_amount), 0);
-            const pendingReturn = Math.max(0, totalExpectedReturn - summary.total_received);
-          %>
-          <div class="sc-amount">R$ <%= pendingReturn.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
-          <div class="sc-sub">Com base no valor acordado de volta</div>
+          <div class="sc-label">Total Tomado de Bancos</div>
+          <div class="sc-amount">R$ <%= summary.total_borrowed.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+          <div class="sc-sub">Já amortizado: R$ <%= summary.total_repaid.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+        </div>
+
+        <div class="summary-card income">
+          <div class="sc-label">Contratos Ativos</div>
+          <div class="sc-amount"><%= summary.active_count %></div>
+          <div class="sc-sub"><%= summary.settled_count %> contrato(s) quitado(s)</div>
         </div>
       </div>
 
       <!-- Loans List -->
       <% if (loans.length > 0) { %>
         <% loans.forEach(loan => { 
+          const isReceived = loan.loan_direction === 'received';
           const isCard = loan.payment_source === 'credit_card';
           const returnProfit = (loan.total_return_amount && loan.total_return_amount > loan.principal_amount) 
             ? (loan.total_return_amount - loan.principal_amount) 
             : 0;
           const isDiffInstallments = loan.return_total_installments && (loan.return_total_installments !== loan.total_installments);
         %>
-          <div class="loan-card <%= loan.status === 'settled' ? 'settled' : '' %>">
+          <div class="loan-card <%= loan.status === 'settled' ? 'settled' : '' %>" style="border-left: 4px solid <%= isReceived ? 'var(--warning, #f59e0b)' : 'var(--primary, #6366f1)' %>">
             <div class="loan-header">
               <div>
-                <div style="display:flex; align-items:center; gap:8px">
-                  <span class="loan-borrower"><%= loan.borrower_name %></span>
+                <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+                  <span class="loan-borrower"><%= isReceived ? (loan.creditor_name || loan.borrower_name) : loan.borrower_name %></span>
+                  
                   <span class="badge <%= loan.status === 'active' ? 'badge-active' : 'badge-settled' %>">
                     <%= loan.status === 'active' ? '● Em Aberto' : '✓ Quitado' %>
                   </span>
-                  <% if (isCard) { %>
-                    <span class="badge" style="background:rgba(239, 68, 68, 0.15); color:var(--expense); border: 1px solid rgba(239,68,68,0.25)">
-                      💳 Limite de Cartão
+
+                  <% if (isReceived) { %>
+                    <span class="badge" style="background:rgba(245, 158, 11, 0.15); color:#f59e0b; border: 1px solid rgba(245, 158, 11, 0.3)">
+                      🏦 Empréstimo Tomado (Banco)
                     </span>
                   <% } else { %>
-                    <span class="badge" style="background:rgba(56, 189, 248, 0.15); color:var(--info)">
-                      🏦 Conta Bancária
+                    <span class="badge" style="background:rgba(99, 102, 241, 0.15); color:var(--primary)">
+                      🤝 Empréstimo Concedido
                     </span>
+                    <% if (isCard) { %>
+                      <span class="badge" style="background:rgba(239, 68, 68, 0.15); color:var(--expense); border: 1px solid rgba(239,68,68,0.25)">
+                        💳 Limite de Cartão
+                      </span>
+                    <% } else { %>
+                      <span class="badge" style="background:rgba(56, 189, 248, 0.15); color:var(--info)">
+                        🏦 Conta Bancária
+                      </span>
+                    <% } %>
                   <% } %>
                 </div>
 
                 <div class="loan-meta mt-1">
                   Data de início: <%= new Date(loan.loan_date + 'T12:00:00').toLocaleDateString('pt-BR') %>
                   <% if (loan.institution_name) { %>
-                    • Instituição: <strong><%= loan.institution_name %></strong>
+                    • Conta: <strong><%= loan.institution_name %></strong>
                   <% } %>
                   <% if (loan.notes) { %>
                     • <em>"<%= loan.notes %>"</em>
@@ -135,46 +148,67 @@
                 </div>
               </div>
 
+              <!-- Top right amounts -->
               <div class="loan-amounts text-right">
-                <div>
-                  <div class="loan-return-label">Valor Emprestado</div>
-                  <div class="loan-principal">R$ <%= loan.principal_amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
-                  <div class="text-xs text-muted-c"><%= loan.total_installments %>x de R$ <%= (loan.principal_amount / loan.total_installments).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
-                </div>
-
-                <% if (loan.total_return_amount) { %>
-                  <div style="border-left: 1px solid var(--border-subtle); padding-left: 16px">
-                    <div class="loan-return-label">Retorno Combinado</div>
-                    <div class="loan-return-val">R$ <%= loan.total_return_amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
-                    <div class="text-xs text-muted-c"><%= loan.return_total_installments %>x de R$ <%= (loan.total_return_amount / loan.return_total_installments).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
-                    <% if (returnProfit > 0) { %>
-                      <div class="badge badge-income mt-1">+ R$ <%= returnProfit.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %> de rendimento</div>
-                    <% } %>
+                <% if (isReceived) { %>
+                  <div>
+                    <div class="loan-return-label">Valor Recebido</div>
+                    <div class="loan-principal">R$ <%= loan.principal_amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
                   </div>
+                  <div style="border-left: 1px solid var(--border-subtle); padding-left: 16px">
+                    <div class="loan-return-label">Total a Pagar</div>
+                    <div class="loan-return-val" style="color:var(--expense)">R$ <%= (loan.total_with_interest || loan.principal_amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                    <div class="text-xs text-muted-c">
+                      <%= loan.total_installments %>x de R$ <%= ((loan.total_with_interest || loan.principal_amount) / loan.total_installments).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                      <% if (loan.interest_rate) { %> • Juros: <%= loan.interest_rate %>% <%= loan.interest_rate_type === 'annual' ? 'a.a.' : loan.interest_rate_type === 'total' ? 'fixo' : 'a.m.' %><% } %>
+                    </div>
+                  </div>
+                <% } else { %>
+                  <div>
+                    <div class="loan-return-label">Valor Emprestado</div>
+                    <div class="loan-principal">R$ <%= loan.principal_amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                    <div class="text-xs text-muted-c"><%= loan.total_installments %>x de R$ <%= (loan.principal_amount / loan.total_installments).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                  </div>
+
+                  <% if (loan.total_return_amount) { %>
+                    <div style="border-left: 1px solid var(--border-subtle); padding-left: 16px">
+                      <div class="loan-return-label">Retorno Principal</div>
+                      <div class="loan-return-val">R$ <%= loan.total_return_amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                      <div class="text-xs text-muted-c"><%= loan.return_total_installments %>x de R$ <%= (loan.total_return_amount / loan.return_total_installments).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                      <% if (returnProfit > 0) { %>
+                        <div class="badge badge-income mt-1">+ R$ <%= returnProfit.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %> de rendimento</div>
+                      <% } %>
+                    </div>
+                  <% } %>
                 <% } %>
               </div>
             </div>
 
-            <!-- Context Notices -->
-            <% if (isCard) { %>
+            <!-- Context Notices (Given Card) -->
+            <% if (!isReceived && isCard) { %>
               <div class="alert alert-warning" style="padding: 8px 12px; font-size:12px; margin-bottom:12px">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-                <span><strong>Atenção:</strong> Saída realizada pelo cartão de crédito. Este valor reduziu seu <strong>limite do cartão</strong> e entrará na fatura, sem dedução imediata da conta bancária.</span>
+                <span><strong>Atenção:</strong> Saída realizada pelo cartão de crédito. Este valor reduziu seu <strong>limite do cartão</strong> e entrará na fatura.</span>
               </div>
             <% } %>
 
-            <% if (isDiffInstallments) { %>
+            <% if (!isReceived && isDiffInstallments) { %>
               <div class="return-warning">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
-                <span>A estrutura de retorno é diferente da saída: você financiou em <strong><%= loan.total_installments %>x</strong>, mas receberá de volta em <strong><%= loan.return_total_installments %>x</strong>.</span>
+                <span>A estrutura de retorno é diferente da saída: saída em <strong><%= loan.total_installments %>x</strong>, e retorno em <strong><%= loan.return_total_installments %>x</strong>.</span>
               </div>
             <% } %>
 
-            <!-- Grid: Parcelas de Saída / Fatura do Empréstimo -->
+            <!-- GRID 1: Installments -->
             <div style="margin-top: 14px">
               <div class="inst-section-label">
-                <span>Parcelas da Saída (Suas Faturas / Desembolsos):</span>
-                <span class="text-xs text-muted-c">(<%= loan.paid_count %> de <%= loan.total_installments %> pagas)</span>
+                <% if (isReceived) { %>
+                  <span style="color:var(--expense)">Parcelas de Pagamento da Dívida (Suas saídas / pagamentos ao banco):</span>
+                  <span class="text-xs text-muted-c">(<%= loan.paid_count %> de <%= loan.total_installments %> pagas - R$ <%= loan.total_paid.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>)</span>
+                <% } else { %>
+                  <span>Parcelas da Saída (Suas Faturas / Desembolsos):</span>
+                  <span class="text-xs text-muted-c">(<%= loan.paid_count %> de <%= loan.total_installments %> pagas)</span>
+                <% } %>
               </div>
               <div class="inst-grid">
                 <% loan.installments.forEach(inst => { %>
@@ -196,11 +230,11 @@
               </div>
             </div>
 
-            <!-- Grid: Parcelas de Retorno (Recebimento do Tomador) -->
-            <% if (loan.return_id && loan.return_installments && loan.return_installments.length > 0) { %>
+            <!-- GRID 2: Parcelas de Retorno Principal (Given only) -->
+            <% if (!isReceived && loan.return_id && loan.return_installments && loan.return_installments.length > 0) { %>
               <div style="margin-top: 16px">
                 <div class="inst-section-label">
-                  <span style="color:var(--income)">Parcelas de Retorno (O que a pessoa está te pagando):</span>
+                  <span style="color:var(--income)">Parcelas de Retorno Principal (O que a pessoa está te pagando):</span>
                   <span class="text-xs text-muted-c">(<%= loan.received_count %> de <%= loan.return_total_installments %> recebidas - R$ <%= loan.total_received.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>)</span>
                 </div>
                 <div class="inst-grid">
@@ -213,6 +247,34 @@
                           <div class="inst-date"><%= new Date(rInst.due_date + 'T12:00:00').toLocaleDateString('pt-BR') %></div>
                           <% if (rInst.is_received) { %>
                             <div class="inst-paid-d">✓ Recebido <%= rInst.received_date ? '(' + new Date(rInst.received_date + 'T12:00:00').toLocaleDateString('pt-BR') + ')' : '' %></div>
+                          <% } else { %>
+                            <div class="text-xs text-muted-c">○ A receber</div>
+                          <% } %>
+                        </button>
+                      </form>
+                    </div>
+                  <% }) %>
+                </div>
+              </div>
+            <% } %>
+
+            <!-- GRID 3: Parcelas de Juros / Lucro Paralelo (Duplo Retorno - Given only) -->
+            <% if (!isReceived && loan.interest_return_id && loan.interest_return_installments && loan.interest_return_installments.length > 0) { %>
+              <div style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--border-subtle)">
+                <div class="inst-section-label">
+                  <span style="color:#818cf8">✨ Parcelas de Juros / Rendimento (Lucro Paralelo):</span>
+                  <span class="text-xs text-muted-c">(<%= loan.interest_received_count %> de <%= loan.interest_total_installments %> recebidas - R$ <%= loan.interest_total_received.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %> de R$ <%= loan.interest_total_amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>)</span>
+                </div>
+                <div class="inst-grid">
+                  <% loan.interest_return_installments.forEach(irInst => { %>
+                    <div class="inst-item <%= irInst.is_received ? 'received' : '' %>" style="<%= irInst.is_received ? 'border-color:rgba(129,140,248,0.6); background:rgba(99,102,241,0.08)' : 'border-style:dashed' %>" title="Clique para alternar recebimento dos juros">
+                      <form action="/loans/<%= loan.id %>/interest-return/installments/<%= irInst.id %>/toggle" method="POST">
+                        <button type="submit" style="background:none; border:none; width:100%; height:100%; cursor:pointer; color:inherit; text-align:inherit">
+                          <div class="inst-num" style="color:#818cf8">Juros <%= irInst.installment_number %>/<%= loan.interest_total_installments %></div>
+                          <div class="inst-amt" style="color:#818cf8">R$ <%= irInst.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                          <div class="inst-date"><%= new Date(irInst.due_date + 'T12:00:00').toLocaleDateString('pt-BR') %></div>
+                          <% if (irInst.is_received) { %>
+                            <div class="inst-paid-d" style="color:#818cf8">✓ Recebido <%= irInst.received_date ? '(' + new Date(irInst.received_date + 'T12:00:00').toLocaleDateString('pt-BR') + ')' : '' %></div>
                           <% } else { %>
                             <div class="text-xs text-muted-c">○ A receber</div>
                           <% } %>
@@ -257,8 +319,8 @@
       <% } else { %>
         <div class="card empty-state">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-          <h3>Nenhum empréstimo cadastrado</h3>
-          <p>Cadastre empréstimos feitos para amigos ou familiares, controlando a origem (cartão ou conta) e o plano de retorno com rendimento.</p>
+          <h3>Nenhum empréstimo encontrado</h3>
+          <p>Cadastre empréstimos concedidos a terceiros ou empréstimos tomados com instituições financeiras.</p>
           <a href="/loans/new" class="btn btn-primary btn-sm mt-2">Criar primeiro empréstimo</a>
         </div>
       <% } %>

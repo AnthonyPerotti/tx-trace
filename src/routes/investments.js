@@ -70,9 +70,11 @@ router.get('/', requireAuth, (req, res) => {
 
   const summary = { totalInvested, totalCurrent, totalGain, totalGainPct, fixedCount, varCount };
 
-  const categories = db.prepare(
-    'SELECT * FROM categories WHERE user_id = ? OR user_id IS NULL ORDER BY name'
-  ).all(userId);
+  const categories = db.prepare(`
+    SELECT * FROM categories
+    WHERE (user_id = ? OR (user_id IS NULL AND id NOT IN (SELECT category_id FROM user_hidden_categories WHERE user_id = ?)))
+    ORDER BY name
+  `).all(userId, userId);
 
   res.render('investments/index', {
     title: 'Investimentos — TxTrace',
@@ -87,9 +89,11 @@ router.get('/new', requireAuth, (req, res) => {
   const db = getDb();
   const userId = req.session.userId;
   const today = new Date().toISOString().split('T')[0];
-  const categories = db.prepare(
-    'SELECT * FROM categories WHERE user_id = ? OR user_id IS NULL ORDER BY name'
-  ).all(userId);
+  const categories = db.prepare(`
+    SELECT * FROM categories
+    WHERE (user_id = ? OR (user_id IS NULL AND id NOT IN (SELECT category_id FROM user_hidden_categories WHERE user_id = ?)))
+    ORDER BY name
+  `).all(userId, userId);
 
   res.render('investments/form', {
     title: 'Novo Investimento — TxTrace',
@@ -109,9 +113,11 @@ router.get('/:id/edit', requireAuth, (req, res) => {
   if (!investment) return res.redirect('/investments');
 
   const today = new Date().toISOString().split('T')[0];
-  const categories = db.prepare(
-    'SELECT * FROM categories WHERE user_id = ? OR user_id IS NULL ORDER BY name'
-  ).all(userId);
+  const categories = db.prepare(`
+    SELECT * FROM categories
+    WHERE (user_id = ? OR (user_id IS NULL AND id NOT IN (SELECT category_id FROM user_hidden_categories WHERE user_id = ?)))
+    ORDER BY name
+  `).all(userId, userId);
 
   res.render('investments/form', {
     title: 'Editar Investimento — TxTrace',
@@ -177,9 +183,11 @@ router.post('/', requireAuth, (req, res) => {
     res.redirect('/investments');
   } catch (err) {
     console.error('Create investment error:', err);
-    const categories = db.prepare(
-      'SELECT * FROM categories WHERE user_id = ? OR user_id IS NULL ORDER BY name'
-    ).all(userId);
+    const categories = db.prepare(`
+      SELECT * FROM categories
+      WHERE (user_id = ? OR (user_id IS NULL AND id NOT IN (SELECT category_id FROM user_hidden_categories WHERE user_id = ?)))
+      ORDER BY name
+    `).all(userId, userId);
     res.render('investments/form', {
       title: 'Novo Investimento — TxTrace',
       investment: req.body, categories, today, error: err.message
@@ -248,9 +256,11 @@ router.post('/:id/update', requireAuth, (req, res) => {
     res.redirect('/investments');
   } catch (err) {
     console.error('Update investment error:', err);
-    const categories = db.prepare(
-      'SELECT * FROM categories WHERE user_id = ? OR user_id IS NULL ORDER BY name'
-    ).all(userId);
+    const categories = db.prepare(`
+      SELECT * FROM categories
+      WHERE (user_id = ? OR (user_id IS NULL AND id NOT IN (SELECT category_id FROM user_hidden_categories WHERE user_id = ?)))
+      ORDER BY name
+    `).all(userId, userId);
     res.render('investments/form', {
       title: 'Editar Investimento — TxTrace',
       investment: { ...req.body, id: invId }, categories, today, error: err.message

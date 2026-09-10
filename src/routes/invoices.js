@@ -89,7 +89,20 @@ router.get('/', requireAuth, (req, res) => {
       const now         = new Date();
       const nowYear     = now.getFullYear();
       const nowMonth    = now.getMonth() + 1;
-      const isCurrentOrFuture = (year > nowYear) || (year === nowYear && month >= nowMonth);
+      const nowDay      = now.getDate();
+      const closingDayForCard = tx.invoice_closing_day || 5;
+
+      // A fatura é "aberta" (ainda pode receber lançamentos) somente se:
+      // - É um mês futuro, OU
+      // - É o mês atual E o dia de fechamento ainda não chegou
+      let isOpen;
+      if (year > nowYear || (year === nowYear && month > nowMonth)) {
+        isOpen = true; // fatura de mês futuro, sempre aberta
+      } else if (year === nowYear && month === nowMonth) {
+        isOpen = nowDay <= closingDayForCard; // aberta enquanto não fechou
+      } else {
+        isOpen = false; // mês passado, sempre fechada
+      }
 
       group[key] = {
         year, month, key,
@@ -99,8 +112,9 @@ router.get('/', requireAuth, (req, res) => {
         transactions: [],
         isPaid: !!paidRecord,
         paidAt: paidRecord ? paidRecord.paid_at : null,
-        isOpen: isCurrentOrFuture, // open = current or future month invoice
+        isOpen,
       };
+
     }
 
     group[key].total   += tx.amount;

@@ -16,9 +16,9 @@
           <% }) %>
         </select>
         <select name="year" class="form-control" style="width:auto" onchange="this.form.submit()">
-          <% for(let y = new Date().getFullYear(); y >= new Date().getFullYear() - 4; y--) { %>
+          <% availableYears.forEach(y => { %>
             <option value="<%= y %>" <%= y === year ? 'selected' : '' %>><%= y %></option>
-          <% } %>
+          <% }) %>
         </select>
         <select name="type" class="form-control" style="width:auto" onchange="this.form.submit()">
           <option value="">Todos os tipos</option>

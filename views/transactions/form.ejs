@@ -141,13 +141,16 @@
                     <option value="" data-type="" data-color="">Sem conta específica</option>
                     <% institutions.forEach(inst => { 
                       const typeLabel = inst.type === 'credit_card' ? 'Cartão de Crédito' : inst.type === 'bank' ? 'Banco / Conta Corrente' : 'Conta Digital';
+                      const displayLabel = (inst.type === 'credit_card' && inst.parent_name)
+                        ? `${inst.name} (${inst.parent_name} • Cartão)`
+                        : `${inst.name} (${typeLabel})`;
                     %>
                       <option value="<%= inst.id %>"
                               data-type="<%= inst.type %>"
                               data-color="<%= inst.color %>"
                               data-type-label="<%= typeLabel %>"
                               <%= (transaction && transaction.institution_id == inst.id) ? 'selected' : '' %>>
-                        <%= inst.name %> (<%= typeLabel %>)
+                        <%= displayLabel %>
                       </option>
                     <% }) %>
                   </select>

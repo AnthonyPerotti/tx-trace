@@ -93,6 +93,25 @@ function setMethod(method) {
     }
   });
 
+  // Auto-paid: pix and cash are instantly settled; credit is paid via invoice
+  const isPaidCheckbox = document.getElementById('isPaid');
+  const isPaidLabel    = isPaidCheckbox ? isPaidCheckbox.closest('label') : null;
+  if (isPaidCheckbox) {
+    if (method === 'pix' || method === 'cash' || method === 'debit') {
+      isPaidCheckbox.checked  = true;
+      isPaidCheckbox.disabled = false;
+    } else if (method === 'credit') {
+      isPaidCheckbox.checked  = false;
+      isPaidCheckbox.disabled = true;
+    } else {
+      isPaidCheckbox.disabled = false;
+    }
+    if (isPaidLabel) {
+      isPaidLabel.style.opacity = method === 'credit' ? '0.45' : '1';
+      isPaidLabel.title = method === 'credit' ? 'Transações no crédito são pagas via fatura' : '';
+    }
+  }
+
   filterInstitutionsByMethod(method);
 }
 
