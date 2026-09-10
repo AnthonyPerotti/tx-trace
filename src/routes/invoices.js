@@ -10,8 +10,9 @@ const router = express.Router();
  * Given a transaction date and the card's closing day, return the invoice
  * period (year + month) the transaction belongs to.
  *
- * Rule: if transaction day > closing_day, it belongs to next month's invoice.
- * Example: closing_day = 5, purchase on 2024-03-08 → invoice April 2024.
+ * Rule: if transaction day >= closing_day, it belongs to next month's invoice.
+ * Example: closing_day = 5, purchase on 2024-03-05 → invoice April 2024.
+ *          closing_day = 5, purchase on 2024-03-04 → invoice March 2024.
  */
 function getInvoicePeriod(dateStr, closingDay) {
   const d = new Date(dateStr + 'T12:00:00');
@@ -19,7 +20,7 @@ function getInvoicePeriod(dateStr, closingDay) {
   let year  = d.getFullYear();
   let month = d.getMonth() + 1; // 1-12
 
-  if (day > closingDay) {
+  if (day >= closingDay) {
     month += 1;
     if (month > 12) { month = 1; year += 1; }
   }
@@ -99,7 +100,7 @@ router.get('/', requireAuth, (req, res) => {
       if (year > nowYear || (year === nowYear && month > nowMonth)) {
         isOpen = true; // fatura de mês futuro, sempre aberta
       } else if (year === nowYear && month === nowMonth) {
-        isOpen = nowDay <= closingDayForCard; // aberta enquanto não fechou
+        isOpen = nowDay < closingDayForCard; // fecha no dia do fechamento (compras no dia do fechamento vão para a próxima fatura)
       } else {
         isOpen = false; // mês passado, sempre fechada
       }
@@ -250,3 +251,4 @@ router.post('/:institutionId/:year/:month/unpay', requireAuth, (req, res) => {
 
 
 module.exports = router;
+module.exports.getInvoicePeriod = getInvoicePeriod;
