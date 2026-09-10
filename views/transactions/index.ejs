@@ -60,16 +60,16 @@
       <div class="summary-grid" style="margin-bottom:20px">
         <div class="summary-card income">
           <div class="sc-label">Receitas do mês</div>
-          <div class="sc-amount">R$ <%= (totals.income || 0).toLocaleString('pt-BR', {minimumFractionDigits:2}) %></div>
+          <div class="sc-amount">R$ <%= (totals.income || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %></div>
         </div>
         <div class="summary-card expense">
           <div class="sc-label">Despesas do mês</div>
-          <div class="sc-amount">R$ <%= (totals.expenses || 0).toLocaleString('pt-BR', {minimumFractionDigits:2}) %></div>
+          <div class="sc-amount">R$ <%= (totals.expenses || 0).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %></div>
         </div>
         <div class="summary-card balance">
           <div class="sc-label">Saldo do mês</div>
           <div class="sc-amount" style="color: <%= (totals.income - totals.expenses) >= 0 ? 'var(--income)' : 'var(--expense)' %>">
-            R$ <%= ((totals.income || 0) - (totals.expenses || 0)).toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+            R$ <%= ((totals.income || 0) - (totals.expenses || 0)).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %>
           </div>
         </div>
       </div>
@@ -115,7 +115,7 @@
                   <% if (tx.institution_name) { %><div class="text-xs text-muted-c"><%= tx.institution_name %></div><% } %>
                 </td>
                 <td class="td-amount <%= tx.type === 'income' ? 'td-income' : 'td-expense' %>">
-                  <%= tx.type === 'income' ? '+' : '-' %>R$ <%= tx.amount.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+                  <%= tx.type === 'income' ? '+' : '-' %>R$ <%= tx.amount.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %>
                 </td>
                 <td>
                   <form action="/transactions/<%= tx.id %>/toggle-paid" method="POST" style="display:inline">

@@ -57,10 +57,10 @@
           <div class="sc-label">
             <%= (viewMode === 'all') ? 'Receitas + Retornos' : (viewMode === 'loans') ? 'Retornos de Empréstimo' : 'Receitas' %>
           </div>
-          <div class="sc-amount">R$ <%= summary.income.toLocaleString('pt-BR', {minimumFractionDigits:2}) %></div>
+          <div class="sc-amount">R$ <%= summary.income.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %></div>
           <div class="sc-sub">
             <% if (viewMode === 'all') { %>
-              Tx: R$ <%= summary.txIncome.toLocaleString('pt-BR', {minimumFractionDigits:2}) %> | Emp: R$ <%= summary.loanInflow.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+              Tx: R$ <%= summary.txIncome.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %> | Emp: R$ <%= summary.loanInflow.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %>
             <% } else { %>
               <%= MONTH_NAMES[month-1] %> <%= year %>
             <% } %>
@@ -76,10 +76,10 @@
           <div class="sc-label">
             <%= (viewMode === 'all') ? 'Despesas + Saídas Emp.' : (viewMode === 'loans') ? 'Saídas de Empréstimo' : 'Despesas' %>
           </div>
-          <div class="sc-amount">R$ <%= summary.expenses.toLocaleString('pt-BR', {minimumFractionDigits:2}) %></div>
+          <div class="sc-amount">R$ <%= summary.expenses.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %></div>
           <div class="sc-sub">
             <% if (viewMode === 'all') { %>
-              Tx: R$ <%= summary.txExpenses.toLocaleString('pt-BR', {minimumFractionDigits:2}) %> | Emp: R$ <%= summary.loanOutflow.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+              Tx: R$ <%= summary.txExpenses.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %> | Emp: R$ <%= summary.loanOutflow.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %>
             <% } else { %>
               <%= MONTH_NAMES[month-1] %> <%= year %>
             <% } %>
@@ -94,7 +94,7 @@
           </div>
           <div class="sc-label">Saldo Líquido</div>
           <div class="sc-amount" style="color: <%= summary.balance >= 0 ? 'var(--income)' : 'var(--expense)' %>">
-            R$ <%= summary.balance.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+            R$ <%= summary.balance.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %>
           </div>
           <div class="sc-sub"><%= summary.balance >= 0 ? 'Positivo' : 'Negativo' %> no período</div>
         </div>
@@ -139,7 +139,7 @@
               <div style="display:flex; align-items:center; gap:8px; font-size:12px">
                 <span><%= cat.icon %></span>
                 <span style="flex:1; color:var(--text-secondary)"><%= cat.name %></span>
-                <span style="font-weight:700">R$ <%= cat.total.toLocaleString('pt-BR', {minimumFractionDigits:2}) %></span>
+                <span style="font-weight:700">R$ <%= cat.total.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %></span>
                 <span style="color:var(--text-muted); min-width:32px; text-align:right"><%= pct %>%</span>
               </div>
               <div class="progress">
@@ -180,10 +180,10 @@
               </div>
               <div class="cc-limit-row">
                 <span class="cc-limit-used" style="color:<%= overLimit ? 'var(--expense)' : 'var(--text-primary)' %>">
-                  R$ <%= card.used_limit.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+                  R$ <%= card.used_limit.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %>
                 </span>
                 <span class="cc-limit-total">
-                  de R$ <%= card.credit_limit.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+                  de R$ <%= card.credit_limit.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %>
                 </span>
               </div>
               <div class="progress">
@@ -192,7 +192,7 @@
               </div>
               <div style="display:flex; justify-content:space-between; font-size:11px; margin-top:5px">
                 <span style="color:var(--text-muted)">Disponível: <strong style="color:<%= overLimit ? 'var(--expense)' : 'var(--income)' %>">
-                  R$ <%= Math.abs(available).toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+                  R$ <%= Math.abs(available).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %>
                   <%= overLimit ? '(excedido)' : '' %>
                 </strong></span>
                 <span style="color:<%= pct >= 90 ? 'var(--expense)' : 'var(--text-muted)' %>"><%= pct %>%</span>
@@ -206,7 +206,7 @@
             <% } else { %>
               <div style="font-size:11px; color:var(--text-muted); margin-top:8px">Sem limite definido</div>
               <div style="font-size:12px; font-weight:600; margin-top:4px; color:var(--expense)">
-                R$ <%= card.used_limit.toLocaleString('pt-BR', {minimumFractionDigits:2}) %> em aberto
+                R$ <%= card.used_limit.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %> em aberto
               </div>
             <% } %>
           </div>
@@ -259,7 +259,7 @@
                   <span class="text-muted-c text-xs"><%= methodMap[tx.payment_method] || tx.payment_method %></span>
                 </td>
                 <td class="td-amount <%= tx.type === 'income' ? 'td-income' : 'td-expense' %>">
-                  <%= tx.type === 'income' ? '+' : '-' %>R$ <%= tx.amount.toLocaleString('pt-BR', {minimumFractionDigits:2}) %>
+                  <%= tx.type === 'income' ? '+' : '-' %>R$ <%= tx.amount.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}) %>
                 </td>
                 <td>
                   <span class="badge <%= tx.is_paid ? 'badge-paid' : 'badge-pending' %>">

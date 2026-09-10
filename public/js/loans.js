@@ -231,7 +231,7 @@ function calculateDifference() {
   if (returnVal > principal && principal > 0) {
     const profit = returnVal - principal;
     if (profitCard && profitText) {
-      profitText.innerHTML = `Rendimento extra estimado: <strong>R$ ${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> (+${((profit / principal) * 100).toFixed(1)}%)`;
+      profitText.innerHTML = `Rendimento extra estimado: <strong>R$ ${profit.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> (+${((profit / principal) * 100).toFixed(1)}%)`;
       profitCard.classList.remove('hidden');
     }
   } else {
@@ -295,7 +295,7 @@ function calculateReceivedLoan() {
 
   if (estimateNotice) {
     if (totalPayable > 0) {
-      estimateNotice.innerHTML = `Estimativa de Pagamento: <strong>${installments}x de R$ ${perInstallment.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong> (Total: R$ ${totalPayable.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`;
+      estimateNotice.innerHTML = `Estimativa de Pagamento: <strong>${installments}x de R$ ${perInstallment.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong> (Total: R$ ${totalPayable.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })})`;
       estimateNotice.classList.remove('hidden');
     } else {
       estimateNotice.classList.add('hidden');

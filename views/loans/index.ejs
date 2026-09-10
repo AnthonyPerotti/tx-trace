@@ -50,7 +50,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
             </div>
             <div class="sc-label">Entradas no Mês</div>
-            <div class="sc-amount">R$ <%= summary.monthly_inflow.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+            <div class="sc-amount">R$ <%= summary.monthly_inflow.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
             <div class="sc-sub">Devoluções recebidas + crédito tomado</div>
           </div>
 
@@ -59,7 +59,7 @@
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 18 13.5 8.5 8.5 13.5 1 6"/></svg>
             </div>
             <div class="sc-label">Saídas no Mês</div>
-            <div class="sc-amount">R$ <%= summary.monthly_outflow.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+            <div class="sc-amount">R$ <%= summary.monthly_outflow.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
             <div class="sc-sub">Parcelas pagas ao banco / desembolsos</div>
           </div>
 
@@ -69,7 +69,7 @@
             </div>
             <div class="sc-label">Saldo Líquido do Mês</div>
             <div class="sc-amount" style="color: <%= summary.monthly_net >= 0 ? 'var(--income)' : 'var(--expense)' %>">
-              R$ <%= summary.monthly_net.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+              R$ <%= summary.monthly_net.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
             </div>
             <div class="sc-sub"><%= summary.monthly_net >= 0 ? 'Entrando mais do que saindo' : 'Saídas maiores que entradas' %></div>
           </div>
@@ -80,20 +80,20 @@
       <div class="summary-grid mb-4">
         <div class="summary-card expense">
           <div class="sc-label">Total Emprestado (Concedido)</div>
-          <div class="sc-amount">R$ <%= summary.total_lent.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
-          <div class="sc-sub">Já retornado: R$ <%= summary.total_received.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+          <div class="sc-amount">R$ <%= summary.total_lent.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
+          <div class="sc-sub">Já retornado: R$ <%= summary.total_received.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
         </div>
 
         <div class="summary-card balance">
           <div class="sc-label">Total Tomado de Bancos</div>
-          <div class="sc-amount">R$ <%= summary.total_borrowed.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
-          <div class="sc-sub">Já amortizado: R$ <%= summary.total_repaid.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+          <div class="sc-amount">R$ <%= summary.total_borrowed.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
+          <div class="sc-sub">Já amortizado: R$ <%= summary.total_repaid.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
         </div>
 
         <div class="summary-card income">
           <div class="sc-label">Valores a Receber no Total</div>
-          <div class="sc-amount">R$ <%= summary.total_pending_to_receive.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
-          <div class="sc-sub">Previsto: R$ <%= summary.total_receivable.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %> • <%= summary.active_count %> contrato(s) ativo(s)</div>
+          <div class="sc-amount">R$ <%= summary.total_pending_to_receive.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
+          <div class="sc-sub">Previsto: R$ <%= summary.total_receivable.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %> • <%= summary.active_count %> contrato(s) ativo(s)</div>
         </div>
       </div>
 
@@ -156,36 +156,36 @@
                 <% if (isReceived) { %>
                   <div>
                     <div class="loan-return-label">Valor Recebido</div>
-                    <div class="loan-principal">R$ <%= loan.principal_amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                    <div class="loan-principal">R$ <%= loan.principal_amount.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
                   </div>
                   <div style="border-left: 1px solid var(--border-subtle); padding-left: 16px">
                     <div class="loan-return-label">Total a Pagar</div>
-                    <div class="loan-return-val" style="color:var(--expense)">R$ <%= (loan.total_with_interest || loan.principal_amount).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                    <div class="loan-return-val" style="color:var(--expense)">R$ <%= (loan.total_with_interest || loan.principal_amount).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
                     <div class="text-xs text-muted-c">
-                      <%= loan.total_installments %>x de R$ <%= ((loan.total_with_interest || loan.principal_amount) / loan.total_installments).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                      <%= loan.total_installments %>x de R$ <%= ((loan.total_with_interest || loan.principal_amount) / loan.total_installments).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
                       <% if (loan.interest_rate) { %> • Juros: <%= loan.interest_rate %>% <%= loan.interest_rate_type === 'annual' ? 'a.a.' : loan.interest_rate_type === 'total' ? 'fixo' : 'a.m.' %><% } %>
                     </div>
                   </div>
                 <% } else { %>
                   <div>
                     <div class="loan-return-label">Valor Emprestado</div>
-                    <div class="loan-principal">R$ <%= loan.principal_amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
-                    <div class="text-xs text-muted-c"><%= loan.total_installments %>x de R$ <%= (loan.principal_amount / loan.total_installments).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                    <div class="loan-principal">R$ <%= loan.principal_amount.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
+                    <div class="text-xs text-muted-c"><%= loan.total_installments %>x de R$ <%= (loan.principal_amount / loan.total_installments).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
                   </div>
 
                   <% if (grandTotalReturn > 0) { %>
                     <div style="border-left: 1px solid var(--border-subtle); padding-left: 16px">
                       <div class="loan-return-label">Retorno Principal <%= loan.interest_return_id ? '+ Juros' : '' %></div>
-                      <div class="loan-return-val" style="color:var(--income)">R$ <%= grandTotalReturn.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                      <div class="loan-return-val" style="color:var(--income)">R$ <%= grandTotalReturn.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
                       <div class="text-xs text-muted-c">
                         <% if (loan.interest_return_id) { %>
-                          Principal: <%= loan.return_total_installments %>x de R$ <%= (returnPrincipalAmount / (loan.return_total_installments || 1)).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %> + Juros: <%= loan.interest_total_installments %>x de R$ <%= (returnInterestAmount / (loan.interest_total_installments || 1)).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                          Principal: <%= loan.return_total_installments %>x de R$ <%= (returnPrincipalAmount / (loan.return_total_installments || 1)).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %> + Juros: <%= loan.interest_total_installments %>x de R$ <%= (returnInterestAmount / (loan.interest_total_installments || 1)).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
                         <% } else { %>
-                          <%= loan.return_total_installments %>x de R$ <%= (returnPrincipalAmount / (loan.return_total_installments || 1)).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                          <%= loan.return_total_installments %>x de R$ <%= (returnPrincipalAmount / (loan.return_total_installments || 1)).toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
                         <% } %>
                       </div>
                       <% if (returnProfit > 0) { %>
-                        <div class="badge badge-income mt-1">+ R$ <%= returnProfit.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %> de rendimento</div>
+                        <div class="badge badge-income mt-1">+ R$ <%= returnProfit.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %> de rendimento</div>
                       <% } %>
                     </div>
                   <% } %>
@@ -213,7 +213,7 @@
               <div class="inst-section-label">
                 <% if (isReceived) { %>
                   <span style="color:var(--expense)">Parcelas de Pagamento da Dívida (Suas saídas / pagamentos ao banco):</span>
-                  <span class="text-xs text-muted-c">(<%= loan.paid_count %> de <%= loan.total_installments %> pagas - R$ <%= loan.total_paid.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>)</span>
+                  <span class="text-xs text-muted-c">(<%= loan.paid_count %> de <%= loan.total_installments %> pagas - R$ <%= loan.total_paid.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>)</span>
                 <% } else { %>
                   <span>Parcelas da Saída (Suas Faturas / Desembolsos):</span>
                   <span class="text-xs text-muted-c">(<%= loan.paid_count %> de <%= loan.total_installments %> pagas)</span>
@@ -225,7 +225,7 @@
                     <form action="/loans/<%= loan.id %>/installments/<%= inst.id %>/toggle" method="POST">
                       <button type="submit" style="background:none; border:none; width:100%; height:100%; cursor:pointer; color:inherit; text-align:inherit">
                         <div class="inst-num">Parcela <%= inst.installment_number %>/<%= loan.total_installments %></div>
-                        <div class="inst-amt">R$ <%= inst.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                        <div class="inst-amt">R$ <%= inst.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
                         <div class="inst-date"><%= new Date(inst.due_date + 'T12:00:00').toLocaleDateString('pt-BR') %></div>
                         <% if (inst.is_paid) { %>
                           <div class="inst-paid-d">✓ Pago <%= inst.paid_date ? '(' + new Date(inst.paid_date + 'T12:00:00').toLocaleDateString('pt-BR') + ')' : '' %></div>
@@ -244,7 +244,7 @@
               <div style="margin-top: 16px">
                 <div class="inst-section-label">
                   <span style="color:var(--income)">Parcelas de Retorno Principal (O que a pessoa está te pagando):</span>
-                  <span class="text-xs text-muted-c">(<%= loan.received_count %> de <%= loan.return_total_installments %> recebidas - R$ <%= loan.total_received.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>)</span>
+                  <span class="text-xs text-muted-c">(<%= loan.received_count %> de <%= loan.return_total_installments %> recebidas - R$ <%= loan.total_received.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>)</span>
                 </div>
                 <div class="inst-grid">
                   <% loan.return_installments.forEach(rInst => { %>
@@ -252,7 +252,7 @@
                       <form action="/loans/<%= loan.id %>/return/installments/<%= rInst.id %>/toggle" method="POST">
                         <button type="submit" style="background:none; border:none; width:100%; height:100%; cursor:pointer; color:inherit; text-align:inherit">
                           <div class="inst-num" style="color:var(--income)">Retorno <%= rInst.installment_number %>/<%= loan.return_total_installments %></div>
-                          <div class="inst-amt" style="color:var(--income)">R$ <%= rInst.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                          <div class="inst-amt" style="color:var(--income)">R$ <%= rInst.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
                           <div class="inst-date"><%= new Date(rInst.due_date + 'T12:00:00').toLocaleDateString('pt-BR') %></div>
                           <% if (rInst.is_received) { %>
                             <div class="inst-paid-d">✓ Recebido <%= rInst.received_date ? '(' + new Date(rInst.received_date + 'T12:00:00').toLocaleDateString('pt-BR') + ')' : '' %></div>
@@ -272,7 +272,7 @@
               <div style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--border-subtle)">
                 <div class="inst-section-label">
                   <span style="color:#818cf8">✨ Parcelas de Juros / Rendimento (Lucro Paralelo):</span>
-                  <span class="text-xs text-muted-c">(<%= loan.interest_received_count %> de <%= loan.interest_total_installments %> recebidas - R$ <%= loan.interest_total_received.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %> de R$ <%= loan.interest_total_amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>)</span>
+                  <span class="text-xs text-muted-c">(<%= loan.interest_received_count %> de <%= loan.interest_total_installments %> recebidas - R$ <%= loan.interest_total_received.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %> de R$ <%= loan.interest_total_amount.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>)</span>
                 </div>
                 <div class="inst-grid">
                   <% loan.interest_return_installments.forEach(irInst => { %>
@@ -280,7 +280,7 @@
                       <form action="/loans/<%= loan.id %>/interest-return/installments/<%= irInst.id %>/toggle" method="POST">
                         <button type="submit" style="background:none; border:none; width:100%; height:100%; cursor:pointer; color:inherit; text-align:inherit">
                           <div class="inst-num" style="color:#818cf8">Juros <%= irInst.installment_number %>/<%= loan.interest_total_installments %></div>
-                          <div class="inst-amt" style="color:#818cf8">R$ <%= irInst.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                          <div class="inst-amt" style="color:#818cf8">R$ <%= irInst.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %></div>
                           <div class="inst-date"><%= new Date(irInst.due_date + 'T12:00:00').toLocaleDateString('pt-BR') %></div>
                           <% if (irInst.is_received) { %>
                             <div class="inst-paid-d" style="color:#818cf8">✓ Recebido <%= irInst.received_date ? '(' + new Date(irInst.received_date + 'T12:00:00').toLocaleDateString('pt-BR') + ')' : '' %></div>

@@ -54,7 +54,7 @@
         <div class="summary-card balance">
           <div class="sc-label">Faturas Abertas (Mês Atual)</div>
           <div class="sc-amount" style="color:var(--info)">
-            R$ <%= totalOpen.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+            R$ <%= totalOpen.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
           </div>
           <div class="sc-sub">Gastos acumulando até a data de fechamento</div>
         </div>
@@ -62,7 +62,7 @@
         <div class="summary-card expense">
           <div class="sc-label">Faturas Fechadas a Pagar</div>
           <div class="sc-amount" style="color:var(--expense)">
-            R$ <%= totalClosedPending.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+            R$ <%= totalClosedPending.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
           </div>
           <div class="sc-sub">Faturas já fechadas aguardando quitação</div>
         </div>
@@ -70,7 +70,7 @@
         <div class="summary-card income">
           <div class="sc-label">Limite Total dos Cartões</div>
           <div class="sc-amount" style="color:var(--income)">
-            R$ <%= totalCreditLimit.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+            R$ <%= totalCreditLimit.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
           </div>
           <div class="sc-sub"><%= cardInvoices.length %> cartão(ões) cadastrado(s)</div>
         </div>
@@ -107,7 +107,7 @@
               <% if (card.credit_limit) { %>
                 <div class="text-xs text-muted-c">Limite Total</div>
                 <div style="font-weight:700; font-size:14px; color:var(--text-secondary)">
-                  R$ <%= card.credit_limit.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                  R$ <%= card.credit_limit.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
                 </div>
               <% } else { %>
                 <span class="badge" style="background:var(--bg-input); color:var(--text-muted)">Sem limite configurado</span>
@@ -146,7 +146,7 @@
 
                     <div style="display:flex; align-items:center; gap:12px; flex-shrink:0">
                       <div class="td-amount td-expense" style="font-size:14.5px">
-                        R$ <%= inv.total.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                        R$ <%= inv.total.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
                       </div>
 
                       <span class="badge <%= statusClass %>" style="font-size:10.5px">
@@ -211,7 +211,7 @@
                               <% } %>
                             </td>
                             <td class="td-amount td-expense" style="text-align:right">
-                              R$ <%= tx.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                              R$ <%= tx.amount.toLocaleString('pt-BR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) %>
                             </td>
                           </tr>
                         <% }) %>
