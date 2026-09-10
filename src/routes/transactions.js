@@ -73,15 +73,17 @@ router.get('/', requireAuth, (req, res) => {
 
   const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
-  const txYears = db.prepare("SELECT DISTINCT CAST(strftime('%Y', transaction_date) AS INTEGER) as y FROM transactions WHERE user_id = ? ORDER BY y DESC").all(userId).map(r => r.y);
+  const txYears = db.prepare("SELECT DISTINCT CAST(strftime('%Y', transaction_date) AS INTEGER) as y FROM transactions WHERE user_id = ? AND transaction_date IS NOT NULL AND length(transaction_date) >= 4 ORDER BY y DESC").all(userId).map(r => r.y);
   const currentYear = new Date().getFullYear();
-  const availableYears = [...new Set([currentYear, ...txYears])].sort((a, b) => b - a);
+  const availableYears = [...new Set([currentYear, ...txYears])]
+    .filter(y => Number.isInteger(y) && y >= 2000 && y <= 2100)
+    .sort((a, b) => b - a);
 
   res.render('transactions/index', {
     title: 'Transações — TxTrace',
     transactions, categories, institutions, totals, year, month,
     filters: { category_id, institution_id, payment_method, type },
-    MONTH_NAMES, availableYears
+    MONTH_NAMES, availableYears, currentYear
   });
 
 });

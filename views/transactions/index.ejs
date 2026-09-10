@@ -17,7 +17,7 @@
         </select>
         <select name="year" class="form-control" style="width:auto" onchange="this.form.submit()">
           <% availableYears.forEach(y => { %>
-            <option value="<%= y %>" <%= y === year ? 'selected' : '' %>><%= y %></option>
+            <option value="<%= y %>" <%= y === year ? 'selected' : '' %>><%= y === currentYear ? 'Atual' : y %></option>
           <% }) %>
         </select>
         <select name="type" class="form-control" style="width:auto" onchange="this.form.submit()">

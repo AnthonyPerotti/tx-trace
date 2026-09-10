@@ -23,7 +23,7 @@
         </select>
         <select name="year" class="form-control" style="width:auto" onchange="this.form.submit()">
           <% availableYears.forEach(y => { %>
-            <option value="<%= y %>" <%= y === year ? 'selected' : '' %>><%= y %></option>
+            <option value="<%= y %>" <%= y === year ? 'selected' : '' %>><%= y === currentYear ? 'Atual' : y %></option>
           <% }) %>
         </select>
       </form>
@@ -91,9 +91,9 @@
         </div>
 
         <div class="summary-card income">
-          <div class="sc-label">Contratos Ativos</div>
-          <div class="sc-amount"><%= summary.active_count %></div>
-          <div class="sc-sub"><%= summary.settled_count %> contrato(s) quitado(s)</div>
+          <div class="sc-label">Valores a Receber no Total</div>
+          <div class="sc-amount">R$ <%= summary.total_pending_to_receive.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+          <div class="sc-sub">Previsto: R$ <%= summary.total_receivable.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %> • <%= summary.active_count %> contrato(s) ativo(s)</div>
         </div>
       </div>
 
@@ -102,8 +102,11 @@
         <% loans.forEach(loan => { 
           const isReceived = loan.loan_direction === 'received';
           const isCard = loan.payment_source === 'credit_card';
-          const returnProfit = (loan.total_return_amount && loan.total_return_amount > loan.principal_amount) 
-            ? (loan.total_return_amount - loan.principal_amount) 
+          const returnPrincipalAmount = loan.total_return_amount || 0;
+          const returnInterestAmount = loan.interest_total_amount || 0;
+          const grandTotalReturn = returnPrincipalAmount + returnInterestAmount;
+          const returnProfit = (grandTotalReturn > loan.principal_amount) 
+            ? (grandTotalReturn - loan.principal_amount) 
             : 0;
           const isDiffInstallments = loan.return_total_installments && (loan.return_total_installments !== loan.total_installments);
         %>
@@ -170,11 +173,17 @@
                     <div class="text-xs text-muted-c"><%= loan.total_installments %>x de R$ <%= (loan.principal_amount / loan.total_installments).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
                   </div>
 
-                  <% if (loan.total_return_amount) { %>
+                  <% if (grandTotalReturn > 0) { %>
                     <div style="border-left: 1px solid var(--border-subtle); padding-left: 16px">
-                      <div class="loan-return-label">Retorno Principal</div>
-                      <div class="loan-return-val">R$ <%= loan.total_return_amount.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
-                      <div class="text-xs text-muted-c"><%= loan.return_total_installments %>x de R$ <%= (loan.total_return_amount / loan.return_total_installments).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                      <div class="loan-return-label">Retorno Principal <%= loan.interest_return_id ? '+ Juros' : '' %></div>
+                      <div class="loan-return-val" style="color:var(--income)">R$ <%= grandTotalReturn.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %></div>
+                      <div class="text-xs text-muted-c">
+                        <% if (loan.interest_return_id) { %>
+                          Principal: <%= loan.return_total_installments %>x de R$ <%= (returnPrincipalAmount / (loan.return_total_installments || 1)).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %> + Juros: <%= loan.interest_total_installments %>x de R$ <%= (returnInterestAmount / (loan.interest_total_installments || 1)).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                        <% } else { %>
+                          <%= loan.return_total_installments %>x de R$ <%= (returnPrincipalAmount / (loan.return_total_installments || 1)).toLocaleString('pt-BR', {minimumFractionDigits: 2}) %>
+                        <% } %>
+                      </div>
                       <% if (returnProfit > 0) { %>
                         <div class="badge badge-income mt-1">+ R$ <%= returnProfit.toLocaleString('pt-BR', {minimumFractionDigits: 2}) %> de rendimento</div>
                       <% } %>

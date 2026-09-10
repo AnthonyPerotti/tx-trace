@@ -141,28 +141,41 @@ router.get('/', requireAuth, (req, res) => {
   const givenLoans = allLoans.filter(l => (l.loan_direction || 'given') === 'given');
   const receivedLoans = allLoans.filter(l => l.loan_direction === 'received');
 
+  // Total amount expected to be returned (principal returns + parallel interest returns)
+  const totalReceivable = givenLoans.reduce((s, l) => s + (l.total_return_amount || 0) + (l.interest_total_amount || 0), 0);
+  // Total already received so far
+  const totalReceived = givenLoans.reduce((s, l) => s + (l.total_received || 0) + (l.interest_total_received || 0), 0);
+  // Total pending to be received
+  const totalPendingToReceive = Math.max(0, totalReceivable - totalReceived);
+
   const summary = {
-    total_lent:     givenLoans.reduce((s, l) => s + l.principal_amount, 0),
-    total_received: givenLoans.reduce((s, l) => s + (l.total_received || 0) + (l.interest_total_received || 0), 0),
-    total_borrowed: receivedLoans.reduce((s, l) => s + l.principal_amount, 0),
-    total_repaid:   receivedLoans.reduce((s, l) => s + (l.total_paid || 0), 0),
-    active_count:   allLoans.filter(l => l.status === 'active').length,
-    settled_count:  allLoans.filter(l => l.status === 'settled').length,
-    monthly_outflow: monthlyOutflow,
-    monthly_inflow: monthlyInflow,
-    monthly_net: monthlyNet
+    total_lent:               givenLoans.reduce((s, l) => s + l.principal_amount, 0),
+    total_received:           totalReceived,
+    total_receivable:         totalReceivable,
+    total_pending_to_receive: totalPendingToReceive,
+    total_borrowed:           receivedLoans.reduce((s, l) => s + l.principal_amount, 0),
+    total_repaid:             receivedLoans.reduce((s, l) => s + (l.total_paid || 0), 0),
+    active_count:             allLoans.filter(l => l.status === 'active').length,
+    settled_count:            allLoans.filter(l => l.status === 'settled').length,
+    monthly_outflow:          monthlyOutflow,
+    monthly_inflow:           monthlyInflow,
+    monthly_net:              monthlyNet
   };
 
-  // Years with actual loan data
-  const loanYears = db.prepare("SELECT DISTINCT CAST(strftime('%Y', loan_date) AS INTEGER) as y FROM loans WHERE user_id = ? ORDER BY y DESC").all(userId).map(r => r.y);
+  // Years with actual loan data (loans and their installments/returns)
+  const loanYears     = db.prepare("SELECT DISTINCT CAST(strftime('%Y', loan_date) AS INTEGER) as y FROM loans WHERE user_id = ? AND loan_date IS NOT NULL AND length(loan_date) >= 4 ORDER BY y DESC").all(userId).map(r => r.y);
+  const loanInstYears = db.prepare("SELECT DISTINCT CAST(strftime('%Y', li.due_date) AS INTEGER) as y FROM loan_installments li JOIN loans l ON li.loan_id = l.id WHERE l.user_id = ? AND li.due_date IS NOT NULL ORDER BY y DESC").all(userId).map(r => r.y);
+  const loanRetYears  = db.prepare("SELECT DISTINCT CAST(strftime('%Y', lri.due_date) AS INTEGER) as y FROM loan_return_installments lri JOIN loan_returns lr ON lri.loan_return_id = lr.id JOIN loans l ON lr.loan_id = l.id WHERE l.user_id = ? AND lri.due_date IS NOT NULL ORDER BY y DESC").all(userId).map(r => r.y);
   const currentYear = new Date().getFullYear();
-  const availableYears = [...new Set([currentYear, ...loanYears])].sort((a, b) => b - a);
+  const availableYears = [...new Set([currentYear, ...loanYears, ...loanInstYears, ...loanRetYears])]
+    .filter(y => Number.isInteger(y) && y >= 2000 && y <= 2100)
+    .sort((a, b) => b - a);
 
   const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
   res.render('loans/index', {
     title: 'Empréstimos — TxTrace',
-    loans, institutions, summary, year, month, direction, MONTH_NAMES, availableYears
+    loans, institutions, summary, year, month, direction, MONTH_NAMES, availableYears, currentYear
   });
 
 });

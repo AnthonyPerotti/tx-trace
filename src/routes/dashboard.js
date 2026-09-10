@@ -351,11 +351,15 @@ router.get('/', requireAuth, (req, res) => {
 
   const institutions = db.prepare('SELECT * FROM payment_institutions WHERE user_id = ? ORDER BY name').all(userId);
 
-  // Years with actual data (transactions or loans)
-  const txYears   = db.prepare("SELECT DISTINCT CAST(strftime('%Y', transaction_date) AS INTEGER) as y FROM transactions WHERE user_id = ? ORDER BY y DESC").all(userId).map(r => r.y);
-  const loanYears = db.prepare("SELECT DISTINCT CAST(strftime('%Y', loan_date) AS INTEGER) as y FROM loans WHERE user_id = ? ORDER BY y DESC").all(userId).map(r => r.y);
+  // Years with actual data (transactions, loans, and loan installments)
+  const txYears       = db.prepare("SELECT DISTINCT CAST(strftime('%Y', transaction_date) AS INTEGER) as y FROM transactions WHERE user_id = ? AND transaction_date IS NOT NULL AND length(transaction_date) >= 4 ORDER BY y DESC").all(userId).map(r => r.y);
+  const loanYears     = db.prepare("SELECT DISTINCT CAST(strftime('%Y', loan_date) AS INTEGER) as y FROM loans WHERE user_id = ? AND loan_date IS NOT NULL AND length(loan_date) >= 4 ORDER BY y DESC").all(userId).map(r => r.y);
+  const loanInstYears = db.prepare("SELECT DISTINCT CAST(strftime('%Y', li.due_date) AS INTEGER) as y FROM loan_installments li JOIN loans l ON li.loan_id = l.id WHERE l.user_id = ? AND li.due_date IS NOT NULL ORDER BY y DESC").all(userId).map(r => r.y);
+  const loanRetYears  = db.prepare("SELECT DISTINCT CAST(strftime('%Y', lri.due_date) AS INTEGER) as y FROM loan_return_installments lri JOIN loan_returns lr ON lri.loan_return_id = lr.id JOIN loans l ON lr.loan_id = l.id WHERE l.user_id = ? AND lri.due_date IS NOT NULL ORDER BY y DESC").all(userId).map(r => r.y);
   const currentYear = new Date().getFullYear();
-  const availableYears = [...new Set([currentYear, ...txYears, ...loanYears])].sort((a, b) => b - a);
+  const availableYears = [...new Set([currentYear, ...txYears, ...loanYears, ...loanInstYears, ...loanRetYears])]
+    .filter(y => Number.isInteger(y) && y >= 2000 && y <= 2100)
+    .sort((a, b) => b - a);
 
   const MONTH_NAMES = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 
@@ -364,7 +368,7 @@ router.get('/', requireAuth, (req, res) => {
     title: 'Dashboard — TxTrace',
     summary, byCategory, chartData, cardSummaries,
     recentTransactions, institutions, year, month,
-    institutionId, viewMode, MONTH_NAMES, availableYears
+    institutionId, viewMode, MONTH_NAMES, availableYears, currentYear
   });
 
 });
